@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PermutApp - Catálogo de Escuelas</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+        }
+
+        .user-info {
+            text-align: right;
+        }
+
+        .logout-btn {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid white;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: white;
+            color: #667eea;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .filters {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 600;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .table-container {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        th {
+            font-weight: 600;
+            cursor: pointer;
+            position: relative;
+        }
+
+        th:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+            padding: 20px;
+        }
+
+        .pagination button {
+            padding: 8px 12px;
+            border: 1px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .pagination button:hover,
+        .pagination button.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        @media (max-width: 768px) {
+            .filters {
+                grid-template-columns: 1fr;
+            }
+
+            th, td {
+                padding: 8px 10px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>📋 Catálogo de Escuelas</h1>
+                <p>Directorio completo de establecimientos educativos</p>
+            </div>
+            <div class="user-info">
+                <a href="/dashboard.html" style="color: white; text-decoration: none; margin-right: 20px; font-weight: 600;">← Volver al Dashboard</a>
+                <p id="userName">Cargando...</p>
+                <button class="logout-btn" onclick="logout()">Cerrar Sesión</button>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="filters">
+                <div class="form-group">
+                    <label for="search">Buscar</label>
+                    <input type="text" id="search" placeholder="Nombre, número, dirección...">
+                </div>
+                <div class="form-group">
+                    <label for="areaFilter">Área</label>
+                    <select id="areaFilter">
+                        <option value="">Todas las áreas</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="tipoFilter">Tipo</label>
+                    <select id="tipoFilter" disabled>
+                        <option value="">Todos los tipos</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="comunaFilter">Comuna</label>
+                    <select id="comunaFilter">
+                        <option value="">Todas las comunas</option>
+                        <option value="1">Comuna 1</option>
+                        <option value="2">Comuna 2</option>
+                        <option value="3">Comuna 3</option>
+                        <option value="4">Comuna 4</option>
+                        <option value="5">Comuna 5</option>
+                        <option value="6">Comuna 6</option>
+                        <option value="7">Comuna 7</option>
+                        <option value="8">Comuna 8</option>
+                        <option value="9">Comuna 9</option>
+                        <option value="10">Comuna 10</option>
+                        <option value="11">Comuna 11</option>
+                        <option value="12">Comuna 12</option>
+                        <option value="13">Comuna 13</option>
+                        <option value="14">Comuna 14</option>
+                        <option value="15">Comuna 15</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <button class="btn-primary" onclick="aplicarFiltros()">Aplicar Filtros</button>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <div class="table-responsive">
+                    <table id="escuelasTable">
+                        <thead>
+                            <tr>
+                                <th onclick="ordenarTabla('numero')">Número</th>
+                                <th onclick="ordenarTabla('nombre')">Nombre</th>
+                                <th onclick="ordenarTabla('direccion')">Dirección</th>
+                                <th onclick="ordenarTabla('area')">Área</th>
+                                <th onclick="ordenarTabla('tipo')">Tipo</th>
+                                <th onclick="ordenarTabla('comuna')">Comuna</th>
+                            </tr>
+                        </thead>
+                        <tbody id="escuelasBody">
+                            <tr>
+                                <td colspan="6" class="loading">Cargando escuelas...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="pagination" id="pagination">
+                <!-- Paginación se genera dinámicamente -->
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/catalogo.js"></script>
+</body>
+</html>

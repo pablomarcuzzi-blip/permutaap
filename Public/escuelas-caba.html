@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Escuelas CABA — PermutApp</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1100px; margin: 0 auto; background: white; border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); overflow: hidden; }
+
+        /* HEADER */
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 25px 30px; display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { font-size: 1.6rem; }
+        .header p { opacity: 0.85; font-size: 0.9rem; margin-top: 4px; }
+        .back-btn { background: rgba(255,255,255,0.2); border: 1px solid white; color: white; padding: 8px 20px; border-radius: 20px; cursor: pointer; text-decoration: none; font-size: 0.9rem; transition: all 0.3s; white-space: nowrap; }
+        .back-btn:hover { background: white; color: #667eea; }
+
+        /* FILTROS */
+        .filtros { padding: 24px 30px; background: #f8f9fa; border-bottom: 1px solid #e0e0e0; }
+        .filtros-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 12px; align-items: end; }
+        @media (max-width: 800px) { .filtros-grid { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 500px) { .filtros-grid { grid-template-columns: 1fr; } }
+        .form-group { display: flex; flex-direction: column; gap: 5px; }
+        .form-group label { font-size: 0.82rem; font-weight: 600; color: #555; }
+        .form-group input, .form-group select {
+            padding: 9px 12px; border: 2px solid #e0e0e0; border-radius: 8px;
+            font-size: 0.9rem; transition: border-color 0.2s; background: white;
+        }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #667eea; }
+        .btn-limpiar { padding: 9px 18px; border: 2px solid #e0e0e0; border-radius: 8px; background: white; color: #666; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 0.2s; white-space: nowrap; }
+        .btn-limpiar:hover { border-color: #667eea; color: #667eea; }
+
+        /* RESULTADOS */
+        .resultados-header { padding: 16px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e0e0e0; }
+        .resultados-count { font-size: 0.9rem; color: #666; }
+        .resultados-count strong { color: #333; }
+
+        .lista { padding: 20px 30px; }
+        .escuela-card {
+            background: white; border: 1px solid #e0e0e0; border-radius: 10px;
+            padding: 18px 20px; margin-bottom: 12px; transition: all 0.2s;
+            display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: start;
+        }
+        .escuela-card:hover { border-color: #667eea; box-shadow: 0 3px 12px rgba(102,126,234,0.12); }
+        .escuela-nombre { font-size: 1rem; font-weight: 700; color: #333; margin-bottom: 6px; }
+        .escuela-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+        .meta-item { font-size: 0.82rem; color: #666; }
+        .meta-item span { color: #333; font-weight: 600; }
+        .tag { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.78rem; font-weight: 600; white-space: nowrap; }
+        .tag-area { background: #e8ecff; color: #4455cc; }
+        .tag-tipo { background: #e8f5e9; color: #2e7d32; }
+
+        .empty-state { text-align: center; padding: 60px 20px; color: #999; }
+        .empty-state .icon { font-size: 3rem; margin-bottom: 15px; }
+        .empty-state p { font-size: 1rem; }
+
+        .loading { text-align: center; padding: 60px 20px; color: #999; font-size: 1rem; }
+
+        /* Paginación */
+        .paginacion { padding: 20px 30px; display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; border-top: 1px solid #e0e0e0; }
+        .pag-btn { padding: 7px 14px; border: 2px solid #e0e0e0; border-radius: 8px; background: white; color: #555; cursor: pointer; font-size: 0.88rem; font-weight: 600; transition: all 0.2s; }
+        .pag-btn:hover { border-color: #667eea; color: #667eea; }
+        .pag-btn.active { background: #667eea; border-color: #667eea; color: white; }
+        .pag-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        @media print {
+            body { background: white; padding: 0; }
+            .container { box-shadow: none; border-radius: 0; }
+            .header .back-btn, .btn-limpiar, .paginacion, .acciones-export { display: none !important; }
+            .filtros { display: none !important; }
+            .escuela-card { break-inside: avoid; border: 1px solid #ccc; margin-bottom: 8px; }
+            .lista { padding: 10px; }
+        }
+        .acciones-export { display: flex; gap: 10px; }
+        .btn-export { padding: 8px 18px; border-radius: 20px; border: none; cursor: pointer; font-size: 0.88rem; font-weight: 700; transition: all 0.2s; display: flex; align-items: center; gap: 6px; }
+        .btn-pdf { background: #dc3545; color: white; }
+        .btn-pdf:hover { background: #b02a37; }
+        .btn-print { background: #495057; color: white; }
+        .btn-print:hover { background: #343a40; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+    <div class="header">
+        <div>
+            <h1>🏫 Escuelas CABA</h1>
+            <p>Directorio de establecimientos educativos de la Ciudad de Buenos Aires</p>
+        </div>
+        <a href="/dashboard.html" class="back-btn">← Inicio</a>
+    </div>
+
+    <!-- FILTROS -->
+    <div class="filtros">
+        <div class="filtros-grid">
+            <div class="form-group">
+                <label>🔍 Buscar por nombre, dirección o CUE</label>
+                <input type="text" id="filtroTexto" placeholder="Ej: Belgrano, 020100..." oninput="filtrarConDebounce()">
+            </div>
+            <div class="form-group">
+                <label>Área</label>
+                <select id="filtroArea" onchange="onFiltroAreaChange()">
+                    <option value="">Todas las áreas</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Tipo</label>
+                <select id="filtroTipo" onchange="aplicarFiltros()">
+                    <option value="">Todos los tipos</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Distrito Escolar (DE)</label>
+                <select id="filtroDE" onchange="aplicarFiltros()">
+                    <option value="">Todos los DE</option>
+                </select>
+            </div>
+        </div>
+        <div style="margin-top:10px; display:flex; justify-content:flex-end;">
+            <button class="btn-limpiar" onclick="limpiarFiltros()">✕ Limpiar filtros</button>
+        </div>
+    </div>
+
+    <div class="resultados-header">
+        <div class="resultados-count" id="resultadosCount">Cargando...</div>
+        <div class="acciones-export">
+            <button class="btn-export btn-pdf" onclick="exportarPDF()">&#128196; Descargar PDF</button>
+            <button class="btn-export btn-print" onclick="imprimirLista()">&#128424; Imprimir</button>
+        </div>
+    </div>
+
+    <div class="lista" id="listaEscuelas">
+        <div class="loading">⏳ Cargando escuelas...</div>
+    </div>
+
+    <div class="paginacion" id="paginacion"></div>
+
+</div>
+
+<script>
+const token = localStorage.getItem('token');
+if (!token) window.location.href = '/login.html';
+
+let todasLasEscuelas = [];
+let escuelasFiltradas = [];
+let paginaActual = 1;
+const POR_PAGINA = 30;
+let debounceTimer = null;
+
+// ==================== INIT ====================
+
+document.addEventListener('DOMContentLoaded', async () => {
+    await verificarAuth();
+    await Promise.all([cargarAreas(), cargarEscuelas()]);
+});
+
+async function verificarAuth() {
+    const res = await fetch('/api/usuario', { headers: { 'Authorization': `Bearer ${token}` } });
+    if (!res.ok) { window.location.href = '/login.html'; }
+}
+
+// ==================== CARGA DE DATOS ====================
+
+async function cargarEscuelas() {
+    try {
+        const res = await fetch('/api/catalogo-escuelas', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Error al cargar');
+        todasLasEscuelas = await res.json();
+        poblarFiltroDE();
+        escuelasFiltradas = [...todasLasEscuelas];
+        renderizar();
+    } catch (e) {
+        document.getElementById('listaEscuelas').innerHTML = '<div class="empty-state"><div class="icon">❌</div><p>Error al cargar las escuelas. Intentá recargar la página.</p></div>';
+    }
+}
+
+async function cargarAreas() {
+    try {
+        const res = await fetch('/api/areas');
+        const areas = await res.json();
+        const select = document.getElementById('filtroArea');
+        areas.forEach(a => {
+            const opt = document.createElement('option');
+            opt.value = a.id; opt.textContent = a.nombre;
+            select.appendChild(opt);
+        });
+    } catch (e) {}
+}
+
+function poblarFiltroDE() {
+    const des = [...new Set(
+        todasLasEscuelas
+            .map(e => e.distrito_escolar)
+            .filter(d => d && d.toString().trim() !== '')
+    )].sort((a, b) => parseInt(a) - parseInt(b));
+
+    const select = document.getElementById('filtroDE');
+    des.forEach(de => {
+        const opt = document.createElement('option');
+        opt.value = de; opt.textContent = `DE ${de}`;
+        select.appendChild(opt);
+    });
+}
+
+// ==================== FILTROS ====================
+
+async function onFiltroAreaChange() {
+    const areaId = document.getElementById('filtroArea').value;
+    const tipoSelect = document.getElementById('filtroTipo');
+    tipoSelect.innerHTML = '<option value="">Todos los tipos</option>';
+
+    if (areaId) {
+        try {
+            const res = await fetch(`/api/tipos/${areaId}`);
+            const tipos = await res.json();
+            tipos.forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = t.id; opt.textContent = t.nombre;
+                tipoSelect.appendChild(opt);
+            });
+        } catch (e) {}
+    }
+    aplicarFiltros();
+}
+
+function filtrarConDebounce() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(aplicarFiltros, 250);
+}
+
+function aplicarFiltros() {
+    const texto = document.getElementById('filtroTexto').value.trim().toUpperCase();
+    const areaId = document.getElementById('filtroArea').value;
+    const tipoId = document.getElementById('filtroTipo').value;
+    const de = document.getElementById('filtroDE').value;
+
+    escuelasFiltradas = todasLasEscuelas.filter(e => {
+        if (areaId && String(e.area_id) !== String(areaId)) return false;
+        if (tipoId && String(e.tipo_id) !== String(tipoId)) return false;
+        if (de && String(e.distrito_escolar) !== String(de)) return false;
+        if (texto) {
+            const enNombre = e.nombre && e.nombre.toUpperCase().includes(texto);
+            const enDireccion = e.direccion && e.direccion.toUpperCase().includes(texto);
+            const enCUE = e.cue && e.cue.includes(texto);
+            const enBarrio = e.barrio && e.barrio.toUpperCase().includes(texto);
+            if (!enNombre && !enDireccion && !enCUE && !enBarrio) return false;
+        }
+        return true;
+    });
+
+    paginaActual = 1;
+    renderizar();
+}
+
+function limpiarFiltros() {
+    document.getElementById('filtroTexto').value = '';
+    document.getElementById('filtroArea').value = '';
+    document.getElementById('filtroTipo').innerHTML = '<option value="">Todos los tipos</option>';
+    document.getElementById('filtroDE').value = '';
+    escuelasFiltradas = [...todasLasEscuelas];
+    paginaActual = 1;
+    renderizar();
+}
+
+// ==================== RENDER ====================
+
+function renderizar() {
+    const total = escuelasFiltradas.length;
+    const totalPags = Math.ceil(total / POR_PAGINA);
+    const inicio = (paginaActual - 1) * POR_PAGINA;
+    const fin = inicio + POR_PAGINA;
+    const pagina = escuelasFiltradas.slice(inicio, fin);
+
+    // Contador
+    document.getElementById('resultadosCount').innerHTML =
+        `Mostrando <strong>${pagina.length}</strong> de <strong>${total}</strong> escuelas`;
+
+    // Lista
+    const lista = document.getElementById('listaEscuelas');
+    if (pagina.length === 0) {
+        lista.innerHTML = '<div class="empty-state"><div class="icon">🔍</div><p>No se encontraron escuelas con esos criterios.</p></div>';
+    } else {
+        lista.innerHTML = pagina.map(e => `
+            <div class="escuela-card">
+                <div>
+                    <div class="escuela-nombre">${e.nombre}</div>
+                    <div class="escuela-meta">
+                        ${e.direccion ? `<div class="meta-item">📍 <span>${e.direccion}</span>${e.barrio ? ` — ${e.barrio}` : ''}</div>` : (e.barrio ? `<div class="meta-item">📍 <span>${e.barrio}</span></div>` : '')}
+                        ${e.distrito_escolar ? `<div class="meta-item">🏛️ DE <span>${e.distrito_escolar}</span></div>` : ''}
+                        ${e.numero_escuela ? `<div class="meta-item">N° <span>${e.numero_escuela}</span></div>` : ''}
+                        ${e.cue ? `<div class="meta-item">CUE <span>${e.cue}</span></div>` : ''}
+                    </div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end;">
+                    <span class="tag tag-area">${e.area}</span>
+                    <span class="tag tag-tipo">${e.tipo}</span>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // Paginación
+    renderPaginacion(totalPags);
+}
+
+function renderPaginacion(totalPags) {
+    const cont = document.getElementById('paginacion');
+    if (totalPags <= 1) { cont.innerHTML = ''; return; }
+
+    let html = '';
+    html += `<button class="pag-btn" onclick="irPagina(${paginaActual - 1})" ${paginaActual === 1 ? 'disabled' : ''}>‹ Anterior</button>`;
+
+    // Mostrar páginas cercanas
+    const rango = 2;
+    for (let i = 1; i <= totalPags; i++) {
+        if (i === 1 || i === totalPags || (i >= paginaActual - rango && i <= paginaActual + rango)) {
+            html += `<button class="pag-btn ${i === paginaActual ? 'active' : ''}" onclick="irPagina(${i})">${i}</button>`;
+        } else if (i === paginaActual - rango - 1 || i === paginaActual + rango + 1) {
+            html += `<span style="padding:7px 4px;color:#999;">…</span>`;
+        }
+    }
+
+    html += `<button class="pag-btn" onclick="irPagina(${paginaActual + 1})" ${paginaActual === totalPags ? 'disabled' : ''}>Siguiente ›</button>`;
+    cont.innerHTML = html;
+}
+
+function irPagina(n) {
+    const totalPags = Math.ceil(escuelasFiltradas.length / POR_PAGINA);
+    if (n < 1 || n > totalPags) return;
+    paginaActual = n;
+    renderizar();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+// ==================== EXPORTAR ====================
+
+function imprimirLista() {
+    const lista = document.getElementById('listaEscuelas');
+    const paginacion = document.getElementById('paginacion');
+    lista.innerHTML = escuelasFiltradas.map(e => `
+        <div class="escuela-card">
+            <div>
+                <div class="escuela-nombre">${e.nombre}</div>
+                <div class="escuela-meta">
+                    ${e.direccion ? `<div class="meta-item"><span>${e.direccion}</span>${e.barrio ? ' — ' + e.barrio : ''}</div>` : (e.barrio ? `<div class="meta-item"><span>${e.barrio}</span></div>` : '')}
+                    ${e.distrito_escolar ? `<div class="meta-item">DE <span>${e.distrito_escolar}</span></div>` : ''}
+                    ${e.numero_escuela ? `<div class="meta-item">N° <span>${e.numero_escuela}</span></div>` : ''}
+                    ${e.cue ? `<div class="meta-item">CUE <span>${e.cue}</span></div>` : ''}
+                </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end;">
+                <span class="tag tag-area">${e.area}</span>
+                <span class="tag tag-tipo">${e.tipo}</span>
+            </div>
+        </div>
+    `).join('');
+    paginacion.innerHTML = '';
+    window.print();
+    renderizar();
+}
+
+function exportarPDF() {
+    if (escuelasFiltradas.length === 0) { alert('No hay escuelas para exportar.'); return; }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const colorPrincipal = [102, 126, 234];
+    const pageWidth = doc.internal.pageSize.width;
+    const pageHeight = doc.internal.pageSize.height;
+    const margin = 15;
+    let y = 20;
+
+    doc.setFontSize(16); doc.setTextColor(...colorPrincipal);
+    doc.text('Escuelas CABA - PermutApp', pageWidth / 2, y, { align: 'center' });
+    y += 7;
+
+    const areaEl = document.getElementById('filtroArea');
+    const tipoEl = document.getElementById('filtroTipo');
+    const deEl = document.getElementById('filtroDE');
+    const textoEl = document.getElementById('filtroTexto');
+    const partesFiltro = [];
+    if (areaEl.value) partesFiltro.push(areaEl.options[areaEl.selectedIndex].text);
+    if (tipoEl.value) partesFiltro.push(tipoEl.options[tipoEl.selectedIndex].text);
+    if (deEl.value) partesFiltro.push('DE ' + deEl.value);
+    if (textoEl.value.trim()) partesFiltro.push('"' + textoEl.value.trim() + '"');
+    const subtitulo = partesFiltro.length > 0 ? 'Filtros: ' + partesFiltro.join(' - ') : 'Todas las escuelas aprobadas';
+
+    doc.setFontSize(9); doc.setTextColor(120, 120, 120);
+    doc.text(subtitulo, pageWidth / 2, y, { align: 'center' });
+    y += 5;
+    doc.text('Total: ' + escuelasFiltradas.length + ' escuelas - Generado el ' + new Date().toLocaleDateString('es-AR'), pageWidth / 2, y, { align: 'center' });
+    y += 6;
+
+    doc.setDrawColor(...colorPrincipal); doc.setLineWidth(0.5);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 6;
+
+    doc.setTextColor(50, 50, 50);
+    escuelasFiltradas.forEach((e, i) => {
+        const blockHeight = (e.direccion || e.barrio || e.distrito_escolar || e.cue) ? 18 : 12;
+        if (y + blockHeight > pageHeight - 15) {
+            doc.addPage(); y = 15;
+            doc.setFontSize(8); doc.setTextColor(150, 150, 150);
+            doc.text('Escuelas CABA - PermutApp', margin, 10);
+            doc.line(margin, 12, pageWidth - margin, 12);
+            y = 18; doc.setTextColor(50, 50, 50);
+        }
+        doc.setFontSize(10); doc.setFont(undefined, 'bold');
+        const nombre = doc.splitTextToSize((i + 1) + '. ' + e.nombre, pageWidth - margin * 2 - 40);
+        doc.text(nombre, margin, y);
+        doc.setFontSize(7); doc.setFont(undefined, 'normal'); doc.setTextColor(68, 85, 204);
+        doc.text(e.area, pageWidth - margin, y, { align: 'right' });
+        doc.setTextColor(46, 125, 50);
+        doc.text(e.tipo, pageWidth - margin, y + 4, { align: 'right' });
+        y += nombre.length > 1 ? nombre.length * 5 : 6;
+        doc.setFontSize(8.5); doc.setTextColor(100, 100, 100); doc.setFont(undefined, 'normal');
+        const detalles = [];
+        if (e.direccion || e.barrio) detalles.push([e.direccion, e.barrio].filter(Boolean).join(' - '));
+        if (e.distrito_escolar) detalles.push('DE ' + e.distrito_escolar);
+        if (e.numero_escuela) detalles.push('N ' + e.numero_escuela);
+        if (e.cue) detalles.push('CUE ' + e.cue);
+        if (detalles.length > 0) { doc.text(detalles.join('   '), margin + 3, y); y += 6; }
+        doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.2);
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 4;
+        doc.setTextColor(50, 50, 50);
+    });
+
+    doc.setFontSize(8); doc.setTextColor(150, 150, 150);
+    doc.text('PermutApp - Intercambio de Cargos Docentes CABA', pageWidth / 2, pageHeight - 8, { align: 'center' });
+    const nombreArchivo = partesFiltro.length > 0
+        ? 'Escuelas-CABA-' + partesFiltro[0].replace(/\s+/g, '-') + '.pdf'
+        : 'Escuelas-CABA-Completo.pdf';
+    doc.save(nombreArchivo);
+}
+
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+nombre,nivel,area_modalidad,direccion,barrio,cue,tipo_original
+ESCUELA PRIMARIA N° 1,Primaria,Educación Rural,Calle Principal 123,San Justo,0700001,Común
+ESCUELA PRIMARIA N° 2,Primaria,Educación Rural,Avenida Siempre Viva 456,La Plata,0700002,Común
+ESCUELA PRIMARIA N° 3,Primaria,Educación Especial,Calle 1 789,Centro,0700003,Especial
+JARDÍN DE INFANTES "MARAVILLA",Inicial,Educación Especial,Calle 5 101,Barracas,0700004,Especial
+JARDÍN DE INFANTES "SOL NACIENTE",Inicial,Educación Rural,Camino Rural 202,González Chaves,0700005,Común
+ESCUELA SECUNDARIA "BELGRANO",Secundaria,Educación Técnica,Avenida Mitre 303,La Plata,0800001,Técnica
+ESCUELA SECUNDARIA "SAN MARTÍN",Secundaria,Educación Común,Calle 13 404,Tolosa,0800002,Común
+COLEGIO "FRANCISCO BILBAO",Secundaria,Educación Común,Calle 48 505,Casco Urbano,0800003,Común
+INSTITUTO COMERCIAL N° 1,Secundaria,Educación Comercial,Avenida 1 606,Centro,0800004,Comercial
+INSTITUTO SUPERIOR "JUAN V GONZALEZ",Formación Docente,Formación Docente,Calle 1 707,Barracas,1000001,Formación
+INSTITUTO SUPERIOR "MARIANO ACOSTA",Formación Docente,Formación Docente,Avenida Paseo Colón 808,San Telmo,1000002,Formación
+INSTITUTO SUPERIOR DE ARTES N° 1,Formación Docente,Educación Artística,Calle 10 909,La Boca,1000003,Artística

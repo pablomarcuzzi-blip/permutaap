@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PermutApp - Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/7.0.0/fuse.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { font-size: 2rem; }
+        .user-info { text-align: right; }
+        .logout-btn { background: rgba(255,255,255,0.2); border: 1px solid white; color: white; padding: 8px 20px; border-radius: 20px; cursor: pointer; margin-top: 10px; transition: all 0.3s; }
+        .logout-btn:hover { background: white; color: #667eea; }
+        .content { display: grid; grid-template-columns: 1fr 300px; gap: 30px; padding: 30px; }
+        @media (max-width: 900px) { .content { grid-template-columns: 1fr; } }
+        .main-section h2 { color: #333; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 3px solid #667eea; }
+        .form-container { background: #f8f9fa; padding: 25px; border-radius: 10px; margin-bottom: 30px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #555; font-weight: 600; }
+        .form-group input, .form-group select { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; transition: border-color 0.3s; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #667eea; }
+        .form-group select:disabled, .form-group input:disabled { background: #e9ecef; cursor: not-allowed; }
+        .input-group { position: relative; }
+        .input-group input { padding-right: 45px; }
+        .toggle-password { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #888; font-size: 1.1rem; }
+        .toggle-password:hover { color: #667eea; }
+        .checkbox-group { display: flex; flex-wrap: wrap; gap: 10px; }
+        .checkbox-group label { display: flex; align-items: center; margin: 0; font-weight: normal; }
+        .checkbox-group input[type="checkbox"] { margin-right: 5px; }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 30px; border-radius: 25px; cursor: pointer; font-size: 16px; font-weight: 600; transition: transform 0.2s, box-shadow 0.2s; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(102,126,234,0.4); }
+        .cargos-list { display: grid; gap: 15px; }
+        .cargo-card { background: white; border: 2px solid #e0e0e0; border-radius: 10px; padding: 20px; transition: all 0.3s; }
+        .cargo-card:hover { box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .cargo-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px; }
+        .cargo-title { font-size: 1.2rem; color: #333; font-weight: 600; }
+        .cargo-area { background: #667eea; color: white; padding: 4px 12px; border-radius: 15px; font-size: 0.85rem; }
+        .cargo-details { color: #666; margin: 10px 0; line-height: 1.6; }
+        .cargo-actions { display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap; }
+        .btn-small { padding: 6px 15px; border-radius: 15px; border: none; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; }
+        .btn-edit { background: #ffc107; color: #333; }
+        .btn-edit:hover { background: #e0a800; }
+        .btn-delete { background: #dc3545; color: white; }
+        .btn-delete:hover { background: #c82333; }
+        .btn-match { background: #28a745; color: white; }
+        .btn-match:hover { background: #218838; }
+        .sidebar { background: #f8f9fa; padding: 20px; border-radius: 10px; height: fit-content; }
+        .sidebar h3 { color: #333; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #667eea; }
+        .mis-escuelas-list { list-style: none; }
+        .mis-escuelas-list li { background: white; padding: 12px; margin-bottom: 10px; border-radius: 8px; border-left: 4px solid #667eea; display: flex; justify-content: space-between; align-items: center; }
+        .mis-escuelas-list li button { background: none; border: none; cursor: pointer; font-size: 1.1rem; }
+
+        /* Modales */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 30px; border-radius: 15px; width: 90%; max-width: 500px; position: relative; max-height: 90vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-header h3 { color: #333; }
+        .close-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #999; }
+        .close-btn:hover { color: #333; }
+
+        /* Modales feedback */
+        .modal-feedback .modal-content { text-align: center; max-width: 400px; }
+        .modal-icon { font-size: 60px; margin-bottom: 20px; }
+        .modal-feedback h3 { margin-bottom: 15px; }
+        .modal-feedback p { color: #666; margin-bottom: 25px; }
+        .modal-feedback .btn-primary { margin: 0 auto; display: inline-block; }
+
+        /* Modal confirmación */
+        .modal-confirm .modal-content { max-width: 400px; text-align: center; }
+        .modal-confirm .modal-icon { font-size: 50px; margin-bottom: 15px; }
+        .modal-confirm h3 { margin-bottom: 10px; color: #333; }
+        .modal-confirm p { color: #666; margin-bottom: 25px; font-size: 0.95rem; }
+        .modal-confirm .btn-group { display: flex; gap: 10px; justify-content: center; }
+
+        .coincidencias-modal .modal-content { max-width: 700px; max-height: 80vh; overflow-y: auto; }
+        .coincidencia-item { background: white; border: 2px solid #e0e0e0; border-radius: 10px; margin-bottom: 15px; overflow: hidden; transition: all 0.3s ease; }
+        .coincidencia-item:hover { border-color: #667eea; box-shadow: 0 4px 12px rgba(102,126,234,0.15); }
+        .coincidencia-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 15px; }
+        .coincidencia-cargo { color: white; margin: 0; font-size: 1.1rem; font-weight: 600; }
+        .coincidencia-content { padding: 15px; }
+        .coincidencia-detalle { margin: 8px 0; color: #333; font-size: 0.95rem; line-height: 1.5; }
+        .coincidencia-email { background: #f0f4ff; padding: 12px; border-radius: 8px; margin: 10px 0 !important; border-left: 4px solid #667eea; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .email-text { font-weight: 700; color: #667eea; font-size: 0.95rem; flex: 1; min-width: 150px; word-break: break-all; }
+        .btn-copy { background: #667eea; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s ease; white-space: nowrap; flex-shrink: 0; }
+        .btn-copy:hover { background: #5567d8; }
+        .btn-copy-success { background: #28a745 !important; }
+        .no-coincidencias { text-align: center; color: #999; padding: 30px; }
+        .empty-state { text-align: center; padding: 40px; color: #999; }
+
+        .search-suggestions { border: 1px solid #e0e0e0; border-radius: 8px; margin-top: 5px; max-height: 200px; overflow-y: auto; display: none; }
+        .suggestion-item { padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #f0f0f0; font-size: 0.9rem; }
+        .suggestion-item:hover { background: #f0f4ff; }
+        .suggestion-nombre { font-weight: 600; color: #333; }
+        .suggestion-meta { color: #888; font-size: 0.8rem; }
+
+        .alert { padding: 12px 16px; border-radius: 8px; margin: 10px 0; font-size: 0.9rem; }
+        .alert-warning { background: #fff3cd; border: 1px solid #ffc107; color: #856404; }
+        .alert-info { background: #d1ecf1; border: 1px solid #17a2b8; color: #0c5460; }
+        .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+        /* Botones flotantes */
+        .fab-container {
+            position: fixed;
+            right: 30px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 500;
+        }
+        .fab-btn {
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 13px 18px;
+            font-size: 0.88rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 5px 18px rgba(0,0,0,0.25);
+            transition: all 0.25s;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            white-space: nowrap;
+        }
+        .fab-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+        .fab-escuelas { background: linear-gradient(135deg, #f7971e 0%, #e65c00 100%); }
+        .fab-tutorial { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: #1a3a1a; }
+
+        /* Modal Tutorial */
+        .modal-tutorial .modal-content { max-width: 620px; max-height: 80vh; overflow-y: auto; text-align: left; }
+        .tutorial-section { margin-bottom: 20px; }
+        .tutorial-section h4 { color: #667eea; margin-bottom: 8px; font-size: 1rem; }
+        .tutorial-section p { color: #444; font-size: 0.92rem; line-height: 1.65; margin-bottom: 6px; }
+        .tutorial-section ol, .tutorial-section ul { padding-left: 20px; color: #444; font-size: 0.92rem; line-height: 1.8; }
+        .tutorial-aviso { background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px 15px; border-radius: 6px; color: #856404; font-size: 0.9rem; margin-top: 6px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div>
+            <h1>📚 PermutApp</h1>
+            <p>Sistema de Intercambio de Cargos Docentes</p>
+        </div>
+        <div class="user-info">
+            <span id="adminLink" style="display:none;">
+                <a href="/admin.html" style="color:white;text-decoration:none;margin-right:15px;font-weight:600;">
+                    ⚙️ Admin <span id="adminBadge" style="background:#dc3545;border-radius:10px;padding:2px 7px;font-size:0.75rem;display:none;"></span>
+                </a>
+            </span>
+            <p id="userName">Cargando...</p>
+            <button class="logout-btn" onclick="logout()">Cerrar Sesión</button>
+        </div>
+    </div>
+
+    <div class="content">
+        <div class="main-section">
+            <h2>📝 Registrar Nuevo Cargo</h2>
+            <div class="form-container">
+                <form id="cargoForm">
+                    <div class="form-group">
+                        <label for="area">Área *</label>
+                        <select id="area" required><option value="">Seleccionar área...</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="tipo">Tipo de Escuela</label>
+                        <select id="tipo" disabled><option value="">Seleccionar tipo...</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="cargo">Cargo Titular *</label>
+                        <select id="cargo" required><option value="">Cargando cargos...</option></select>
+                    </div>
+                    <div class="form-group" id="anioGroup" style="display:none;">
+                        <label for="anio">Año</label>
+                        <select id="anio">
+                            <option value="">Seleccionar año...</option>
+                            <option value="1ro">1ro</option><option value="2do">2do</option>
+                            <option value="3ro">3ro</option><option value="4to">4to</option>
+                            <option value="5to">5to</option><option value="6to">6to</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="escuela">Nombre de escuela *</label>
+                        <select id="escuela" required disabled><option value="">Seleccionar escuela...</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Turno *</label>
+                        <div class="checkbox-group">
+                            <label><input type="checkbox" id="turno-manana"> Mañana</label>
+                            <label><input type="checkbox" id="turno-tarde"> Tarde</label>
+                            <label><input type="checkbox" id="turno-vespertino"> Vespertino</label>
+                            <label><input type="checkbox" id="turno-noche"> Noche</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="horario">Horario (opcional)</label>
+                        <input type="text" id="horario" placeholder="Ej: 8:00 a 12:00">
+                    </div>
+                    <button type="submit" class="btn-primary" id="submitBtn">Registrar Cargo</button>
+                </form>
+            </div>
+
+            <h2>📋 Mis Cargos Registrados
+                <button class="btn-primary" style="font-size:0.8rem;padding:6px 12px;margin-left:10px;" onclick="generarPDF()">📄 PDF</button>
+            </h2>
+            <div id="cargosList" class="cargos-list"><div class="empty-state">Cargando...</div></div>
+        </div>
+
+        <div class="sidebar">
+            <h3>🏫 Mis Escuelas Agregadas</h3>
+            <ul id="misEscuelasList" class="mis-escuelas-list">
+                <li style="border-left-color:#999;color:#999;">No tienes escuelas agregadas</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Nueva Escuela — paso 1: CUE + Área -->
+<div id="modalNuevaEscuela" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>➕ Agregar Nueva Escuela</h3>
+            <button class="close-btn" onclick="cerrarModalEscuela()">&times;</button>
+        </div>
+
+        <!-- Paso 1: CUE + Área -->
+        <div id="paso1Escuela">
+            <div class="form-group">
+                <label>CUE <span style="color:#dc3545;">*</span></label>
+                <input type="text" id="nuevaEscuelaCUE" placeholder="Ej: 020100100"
+                    oninput="this.value=this.value.replace(/[^0-9]/g,''); resetValidacionCUE();"
+                    maxlength="20">
+                <small style="color:#888;">Código único del establecimiento — solo números</small>
+            </div>
+            <div class="form-group">
+                <label>Área <span style="color:#dc3545;">*</span></label>
+                <select id="nuevaEscuelaAreaPaso1" onchange="resetValidacionCUE()">
+                    <option value="">Seleccionar área...</option>
+                </select>
+            </div>
+            <button class="btn-primary" onclick="validarCUEyArea()" style="width:100%;">Verificar disponibilidad</button>
+            <div id="cueResultado" style="margin-top:10px;"></div>
+        </div>
+
+        <!-- Paso 2: Datos completos -->
+        <div id="formNuevaEscuela" style="display:none;">
+            <div style="background:#f0f4ff;padding:10px 14px;border-radius:8px;margin-bottom:15px;font-size:0.85rem;color:#555;">
+                <strong>CUE:</strong> <span id="cueConfirmado"></span> &nbsp;|&nbsp;
+                <strong>Área:</strong> <span id="areaConfirmada"></span>
+            </div>
+            <div class="form-group">
+                <label>Tipo de escuela <span style="color:#dc3545;">*</span></label>
+                <select id="nuevaEscuelaTipoPaso2">
+                    <option value="">Seleccionar tipo...</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Nombre <span style="color:#dc3545;">*</span></label>
+                <input type="text" id="nuevaEscuelaNombreInput" placeholder="Escribí para buscar similares..." oninput="buscarSimilares()">
+                <div id="sugerenciasEscuela" class="search-suggestions"></div>
+            </div>
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label>Número de escuela</label>
+                    <input type="text" id="nuevaEscuelaNumero" placeholder="Ej: 1" oninput="this.value=this.value.replace(/[^0-9]/g,'')" maxlength="4">
+                </div>
+                <div class="form-group">
+                    <label>Distrito Escolar (DE)</label>
+                    <input type="text" id="nuevaEscuelaDE" placeholder="Ej: 13" oninput="this.value=this.value.replace(/[^0-9]/g,'')" maxlength="2">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Dirección</label>
+                <input type="text" id="nuevaEscuelaDireccion" placeholder="Ej: Av. Santa Fe 1234">
+            </div>
+            <div class="form-group">
+                <label>Barrio</label>
+                <input type="text" id="nuevaEscuelaBarrio" placeholder="Ej: Palermo">
+            </div>
+            <button class="btn-primary" onclick="guardarNuevaEscuela()">Guardar Escuela</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Proponer Cargo -->
+<div id="modalProponerCargo" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>📩 Proponer nuevo cargo</h3>
+            <button class="close-btn" onclick="cerrarModalProponerCargo()">&times;</button>
+        </div>
+        <p style="color:#666;margin-bottom:15px;font-size:0.9rem;">El cargo quedará pendiente de aprobación. Una vez aprobado estará disponible para todos.</p>
+        <div class="form-group">
+            <label>Nombre del cargo *</label>
+            <input type="text" id="propCargoNombre" placeholder="Ej: Jefe de Taller">
+        </div>
+        <div class="form-group">
+            <label>¿En qué tipo de escuela aplica? (opcional)</label>
+            <select id="propCargoTipo"><option value="">Todos los tipos...</option></select>
+        </div>
+        <button class="btn-primary" onclick="enviarPropuestaCargo()">Enviar propuesta</button>
+    </div>
+</div>
+
+<!-- Modal Coincidencias -->
+<div id="modalCoincidencias" class="modal coincidencias-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>🎯 Coincidencias Encontradas</h3>
+            <button class="close-btn" onclick="cerrarModalCoincidencias()">&times;</button>
+        </div>
+        <div id="coincidenciasContent"><div class="no-coincidencias">Buscando coincidencias...</div></div>
+    </div>
+</div>
+
+<!-- Modales feedback -->
+<div id="modalExito" class="modal modal-feedback">
+    <div class="modal-content">
+        <div class="modal-icon">✅</div>
+        <h3 style="color:#28a745;">¡Listo!</h3>
+        <p id="mensajeExito"></p>
+        <button class="btn-primary" onclick="cerrarModalFeedback('modalExito')" style="background:#28a745;">Aceptar</button>
+    </div>
+</div>
+
+<div id="modalError" class="modal modal-feedback">
+    <div class="modal-content">
+        <div class="modal-icon">❌</div>
+        <h3 style="color:#dc3545;">Error</h3>
+        <p id="mensajeError"></p>
+        <button class="btn-primary" onclick="cerrarModalFeedback('modalError')" style="background:#dc3545;">Aceptar</button>
+    </div>
+</div>
+
+<div id="modalAdvertencia" class="modal modal-feedback">
+    <div class="modal-content">
+        <div class="modal-icon">⚠️</div>
+        <h3 style="color:#ffc107;">Atención</h3>
+        <p id="mensajeAdvertencia"></p>
+        <button class="btn-primary" onclick="cerrarModalFeedback('modalAdvertencia')" style="background:#ffc107;color:#333;">Aceptar</button>
+    </div>
+</div>
+
+<div id="modalInfo" class="modal modal-feedback">
+    <div class="modal-content">
+        <div class="modal-icon">ℹ️</div>
+        <h3 style="color:#17a2b8;">Información</h3>
+        <p id="mensajeInfo"></p>
+        <button class="btn-primary" onclick="cerrarModalFeedback('modalInfo')" style="background:#17a2b8;">Aceptar</button>
+    </div>
+</div>
+
+<!-- Modal Confirmación (reemplaza confirm()) -->
+<div id="modalConfirm" class="modal modal-confirm">
+    <div class="modal-content">
+        <div class="modal-icon" id="confirmIcon">⚠️</div>
+        <h3 id="confirmTitulo">¿Estás seguro?</h3>
+        <p id="confirmMensaje"></p>
+        <div class="btn-group">
+            <button id="confirmAceptar" class="btn-primary" style="background:#dc3545;">Confirmar</button>
+            <button onclick="cerrarConfirm()" class="btn-primary" style="background:#6c757d;">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Botones flotantes -->
+<div class="fab-container">
+    <a href="/escuelas-caba.html" class="fab-btn fab-escuelas">🏫 Escuelas CABA</a>
+    <button class="fab-btn fab-tutorial" onclick="abrirTutorial()">📘 Tutorial para Permutar</button>
+</div>
+
+<!-- Modal Tutorial -->
+<div id="modalTutorial" class="modal modal-tutorial">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>📘 Tutorial para Permutar</h3>
+            <button class="close-btn" onclick="cerrarTutorial()">&times;</button>
+        </div>
+
+        <div class="tutorial-section">
+            <h4>📘 ¿Qué es la permuta docente en CABA?</h4>
+            <p>La permuta docente es un procedimiento formal mediante el cual dos docentes titulares intercambian sus cargos (escuela, turno o ubicación), manteniendo su estabilidad laboral.</p>
+            <p>Este proceso está regulado por el Ministerio de Educación del Gobierno de la Ciudad de Buenos Aires y requiere aprobación administrativa.</p>
+        </div>
+
+        <div class="tutorial-section">
+            <h4>✅ ¿Quiénes pueden solicitar una permuta?</h4>
+            <p>Para que la permuta sea válida, deben cumplirse las siguientes condiciones:</p>
+            <ul>
+                <li>Ambos docentes deben ser <strong>titulares</strong> del cargo.</li>
+                <li>Deben desempeñar el <strong>mismo cargo</strong> (ej: preceptor con preceptor, director con director).</li>
+                <li>Deben pertenecer al <strong>mismo nivel o modalidad educativa</strong>.</li>
+                <li>Contar con una <strong>antigüedad mínima</strong> en el cargo (generalmente 2 años).</li>
+                <li>Estar en <strong>condiciones administrativas regulares</strong> (sin sanciones incompatibles).</li>
+            </ul>
+        </div>
+
+        <div class="tutorial-section">
+            <h4>🕒 ¿Cuándo se puede solicitar?</h4>
+            <p>La permuta se puede solicitar cuando ambos docentes cumplen los requisitos y acuerdan el intercambio.</p>
+            <div class="tutorial-aviso">👉 La aprobación depende del calendario y evaluación del sistema educativo, por lo que no es automática ni inmediata.</div>
+        </div>
+
+        <div class="tutorial-section">
+            <h4>🔄 ¿Cómo es el proceso?</h4>
+            <ol>
+                <li><strong>Acuerdo entre docentes</strong> — Ambos acuerdan realizar la permuta.</li>
+                <li><strong>Presentación de solicitud</strong> — Se completa y presenta la documentación en cada institución.</li>
+                <li><strong>Elevación administrativa</strong> — La solicitud es enviada a supervisión o área correspondiente.</li>
+                <li><strong>Evaluación</strong> — El Ministerio analiza si la permuta es viable.</li>
+                <li><strong>Resolución</strong> — Si es aprobada, se emite el acto administrativo.</li>
+                <li><strong>Ejecución</strong> — Los docentes se incorporan a sus nuevas instituciones.</li>
+            </ol>
+        </div>
+
+        <div class="tutorial-section">
+            <h4>⚠️ Aspectos importantes</h4>
+            <ul>
+                <li>La permuta requiere aprobación oficial.</li>
+                <li>No se puede realizar entre cargos diferentes.</li>
+                <li>Puede ser rechazada por razones organizativas o administrativas.</li>
+                <li>No implica pérdida de titularidad.</li>
+                <li>La información presentada debe ser verídica y comprobable.</li>
+            </ul>
+        </div>
+
+        <div style="text-align:center;margin-top:10px;">
+            <button class="btn-primary" onclick="cerrarTutorial()">Entendido</button>
+        </div>
+    </div>
+</div>
+
+<script src="dashboard.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</body>
+</html>

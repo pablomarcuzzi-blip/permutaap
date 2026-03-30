@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PermutApp - Verificá tu correo</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 48px 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 440px;
+            text-align: center;
+        }
+
+        .icon-big {
+            font-size: 4rem;
+            margin-bottom: 16px;
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 1.6rem;
+            margin-bottom: 12px;
+        }
+
+        .descripcion {
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+
+        .email-destacado {
+            font-weight: 700;
+            color: #333;
+        }
+
+        .aviso-spam {
+            font-size: 13px;
+            color: #999;
+            margin-top: 8px;
+            margin-bottom: 28px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s;
+            margin-bottom: 12px;
+        }
+
+        .btn:hover { transform: translateY(-2px); }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-secundario {
+            background: #f5f5f5;
+            color: #555;
+        }
+
+        .btn-secundario:hover { background: #eee; }
+
+        .mensaje {
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .mensaje-ok {
+            background: #efe;
+            color: #3a7;
+        }
+
+        .mensaje-error {
+            background: #fee;
+            color: #c33;
+        }
+
+        .divisor {
+            border: none;
+            border-top: 1px solid #eee;
+            margin: 20px 0;
+        }
+
+        .link-login {
+            font-size: 14px;
+            color: #999;
+        }
+
+        .link-login a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .link-login a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="icon-big">📬</div>
+        <h1>Verificá tu correo</h1>
+
+        <p class="descripcion">
+            Te enviamos un enlace de activación a<br>
+            <span class="email-destacado" id="emailMostrado"></span>
+        </p>
+        <p class="aviso-spam">Revisá también la carpeta de spam o correo no deseado.</p>
+
+        <div class="mensaje mensaje-ok" id="mensajeOk"></div>
+        <div class="mensaje mensaje-error" id="mensajeError"></div>
+
+        <button class="btn btn-primary" id="btnReenviar" onclick="reenviarEmail()">
+            🔄 Reenviar email de verificación
+        </button>
+
+        <button class="btn btn-secundario" onclick="window.location.href='/login.html'">
+            ← Volver al inicio
+        </button>
+
+        <hr class="divisor">
+
+        <p class="link-login">
+            ¿El correo es incorrecto? <a href="/registro.html">Registrate de nuevo</a>
+        </p>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const email = params.get('email') || '';
+        document.getElementById('emailMostrado').textContent = email;
+
+        async function reenviarEmail() {
+            const btn = document.getElementById('btnReenviar');
+            const ok = document.getElementById('mensajeOk');
+            const err = document.getElementById('mensajeError');
+
+            ok.style.display = 'none';
+            err.style.display = 'none';
+            btn.disabled = true;
+            btn.textContent = 'Enviando...';
+
+            try {
+                const res = await fetch('/api/reenviar-verificacion', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    ok.textContent = '✅ Email reenviado. Revisá tu bandeja de entrada.';
+                    ok.style.display = 'block';
+                    // Esperar 60 segundos antes de permitir otro reenvío
+                    let segundos = 60;
+                    const intervalo = setInterval(() => {
+                        segundos--;
+                        btn.textContent = `Reenviar de nuevo (${segundos}s)`;
+                        if (segundos <= 0) {
+                            clearInterval(intervalo);
+                            btn.disabled = false;
+                            btn.textContent = '🔄 Reenviar email de verificación';
+                        }
+                    }, 1000);
+                } else {
+                    err.textContent = data.error || 'No se pudo reenviar el email. Intentá más tarde.';
+                    err.style.display = 'block';
+                    btn.disabled = false;
+                    btn.textContent = '🔄 Reenviar email de verificación';
+                }
+            } catch (e) {
+                err.textContent = 'Error de conexión. Intentá más tarde.';
+                err.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = '🔄 Reenviar email de verificación';
+            }
+        }
+    </script>
+</body>
+</html>
