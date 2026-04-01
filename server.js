@@ -32,7 +32,7 @@ const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static('publico'));
+app.use(express.static('público'));
 
 initDatabase();
 
