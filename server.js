@@ -598,6 +598,12 @@ app.get('/api/admin/pendientes-viejos', adminMiddleware, (req, res) => {
     });
 });
 
+// ==================== RUTA PRINCIPAL ====================
+
+app.get('/', (req, res) => {
+    res.redirect('/login.html');
+});
+
 // ==================== INICIAR SERVIDOR ====================
 
 app.listen(PORT, () => {
