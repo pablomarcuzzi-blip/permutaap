@@ -52,8 +52,9 @@ function cerrarConfirm() {
 
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('confirmAceptar').onclick = () => {
+        const cb = _confirmCallback;
         cerrarConfirm();
-        if (_confirmCallback) _confirmCallback();
+        if (cb) cb();
     };
 });
 
