@@ -486,6 +486,30 @@ const eliminarEscuelaAdmin = (id, callback) => {
     });
 };
 
+// ==================== ADMIN — ABM USUARIOS ====================
+
+const obtenerTodosUsuarios = (callback) => {
+    db.all(`SELECT id, email, nombre, dni, telefono, fecha_registro, activo, es_admin, email_verificado FROM usuarios ORDER BY fecha_registro DESC`, [], callback);
+};
+
+const actualizarUsuarioAdmin = (id, activo, es_admin, email_verificado, callback) => {
+    db.run(`UPDATE usuarios SET activo = ?, es_admin = ?, email_verificado = ? WHERE id = ?`,
+        [activo, es_admin, email_verificado, id], function(err) { callback(err, this ? this.changes : 0); });
+};
+
+const eliminarUsuarioAdmin = (id, callback) => {
+    // Primero eliminar cargos del usuario
+    db.run(`DELETE FROM cargos_intercambio WHERE usuario_id = ?`, [id], (err) => {
+        if (err) return callback(err);
+        db.run(`DELETE FROM notificaciones WHERE usuario_id = ?`, [id], (err) => {
+            if (err) return callback(err);
+            db.run(`DELETE FROM usuarios WHERE id = ?`, [id], function(err) {
+                callback(err, this ? this.changes : 0);
+            });
+        });
+    });
+};
+
 // ==================== COINCIDENCIAS ====================
 
 const buscarCoincidencias = (cargoId, usuarioId, callback) => {
@@ -514,5 +538,6 @@ module.exports = {
     contarPendientes, obtenerPendientesViejos,
     agregarEscuelaAdmin, agregarCargoAdmin, editarCargoAdmin, eliminarCargoAdmin,
     editarEscuelaAdmin, eliminarEscuelaAdmin,
+    obtenerTodosUsuarios, actualizarUsuarioAdmin, eliminarUsuarioAdmin,
     buscarCoincidencias
 };

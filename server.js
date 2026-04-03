@@ -21,6 +21,7 @@ const {
     contarPendientes, obtenerPendientesViejos,
     agregarEscuelaAdmin, agregarCargoAdmin, editarCargoAdmin, eliminarCargoAdmin,
     editarEscuelaAdmin, eliminarEscuelaAdmin,
+    obtenerTodosUsuarios, actualizarUsuarioAdmin, eliminarUsuarioAdmin,
     buscarCoincidencias
 } = require('./database');
 
@@ -602,6 +603,38 @@ app.get('/api/admin/pendientes-viejos', adminMiddleware, (req, res) => {
 
 app.get('/', (req, res) => {
     res.redirect('/login.html');
+});
+
+// ==================== ADMIN — ABM USUARIOS ====================
+
+app.get('/api/admin/usuarios', adminMiddleware, (req, res) => {
+    obtenerTodosUsuarios((err, usuarios) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(usuarios);
+    });
+});
+
+app.put('/api/admin/usuarios/:id', adminMiddleware, (req, res) => {
+    const { activo, es_admin, email_verificado } = req.body;
+    if (Number(req.params.id) === req.userId && es_admin === 0) {
+        return res.status(400).json({ error: 'No podés quitarte el rol de admin a vos mismo' });
+    }
+    actualizarUsuarioAdmin(req.params.id, activo, es_admin, email_verificado, (err, changes) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (changes === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
+        res.json({ message: 'Usuario actualizado' });
+    });
+});
+
+app.delete('/api/admin/usuarios/:id', adminMiddleware, (req, res) => {
+    if (Number(req.params.id) === req.userId) {
+        return res.status(400).json({ error: 'No podés eliminar tu propia cuenta desde el panel' });
+    }
+    eliminarUsuarioAdmin(req.params.id, (err, changes) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (changes === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
+        res.json({ message: 'Usuario eliminado' });
+    });
 });
 
 // ==================== INICIAR SERVIDOR ====================

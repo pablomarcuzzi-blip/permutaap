@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PermutApp - ABM Usuarios</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1100px; margin: 0 auto; background: white; border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 25px 30px; display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { font-size: 1.6rem; }
+        .logout-btn { background: rgba(255,255,255,0.2); border: 1px solid white; color: white; padding: 8px 20px; border-radius: 20px; cursor: pointer; transition: all 0.3s; }
+        .logout-btn:hover { background: white; color: #667eea; }
+        .content { padding: 30px; }
+        .section-title { font-size: 1.2rem; font-weight: 600; color: #333; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #667eea; }
+        .search-box { margin-bottom: 15px; }
+        .search-box input { width: 100%; padding: 10px 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; }
+        .search-box input:focus { outline: none; border-color: #667eea; }
+        .tabla-abm { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin-top: 10px; }
+        .tabla-abm th { background: #667eea; color: white; padding: 10px 12px; text-align: left; }
+        .tabla-abm td { padding: 10px 12px; border-bottom: 1px solid #e0e0e0; vertical-align: middle; }
+        .tabla-abm tr:hover td { background: #f0f4ff; }
+        .acciones { display: flex; gap: 6px; flex-wrap: wrap; }
+        .btn { padding: 6px 14px; border-radius: 20px; border: none; cursor: pointer; font-weight: 600; font-size: 0.8rem; transition: all 0.2s; }
+        .btn:hover { opacity: 0.85; }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-warning { background: #ffc107; color: #333; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-info { background: #17a2b8; color: white; }
+        .empty-state { text-align: center; padding: 40px; color: #999; }
+        .badge-estado { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.78rem; font-weight: 600; }
+        .badge-activo { background: #d4edda; color: #155724; }
+        .badge-inactivo { background: #f8d7da; color: #721c24; }
+        .badge-admin { background: #cce5ff; color: #004085; }
+        .badge-verificado { background: #d4edda; color: #155724; }
+        .badge-no-verificado { background: #fff3cd; color: #856404; }
+
+        /* Modales */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; padding: 30px; border-radius: 15px; width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-header h3 { color: #333; }
+        .close-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #999; }
+        .close-btn:hover { color: #333; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #555; font-weight: 600; font-size: 0.9rem; }
+        .form-group input { width: 100%; padding: 10px 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; }
+        .form-group input:focus { outline: none; border-color: #667eea; }
+        .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
+        .toggle-row label { font-weight: 600; color: #444; }
+        .toggle-row input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+        .alert { padding: 12px 16px; border-radius: 8px; margin-bottom: 15px; font-size: 0.9rem; }
+        .alert-warning { background: #fff3cd; border: 1px solid #ffc107; color: #856404; }
+        .alert-success { background: #d4edda; border: 1px solid #28a745; color: #155724; }
+        .alert-danger { background: #f8d7da; border: 1px solid #dc3545; color: #721c24; }
+
+        .modal-feedback .modal-content { text-align: center; max-width: 400px; }
+        .modal-icon { font-size: 60px; margin-bottom: 15px; }
+        .modal-feedback p { color: #666; margin-bottom: 25px; }
+        .modal-confirm .modal-content { max-width: 420px; text-align: center; }
+        .modal-confirm .modal-icon { font-size: 50px; margin-bottom: 15px; }
+        .modal-confirm h3 { margin-bottom: 10px; color: #333; }
+        .modal-confirm p { color: #666; margin-bottom: 25px; font-size: 0.95rem; }
+        .modal-confirm .btn-group { display: flex; gap: 10px; justify-content: center; }
+
+        @media (max-width: 700px) {
+            .tabla-abm { font-size: 0.8rem; }
+            .tabla-abm th, .tabla-abm td { padding: 8px 6px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div>
+            <h1>👥 ABM Usuarios — PermutApp</h1>
+            <p style="opacity:0.8; font-size:0.9rem;">Bienvenido, <span id="adminNombre">Admin</span></p>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <a href="/admin.html" style="color:white; text-decoration:none; font-size:0.9rem;">← Panel Admin</a>
+            <button class="logout-btn" onclick="logout()">Cerrar Sesión</button>
+        </div>
+    </div>
+
+    <div class="content">
+        <div class="section-title">👥 Usuarios registrados</div>
+        <div class="search-box">
+            <input type="text" id="buscarUsuario" placeholder="Buscar por nombre, email o DNI..." oninput="filtrarUsuarios()">
+        </div>
+        <div id="tablaUsuariosContainer"><div class="empty-state">Cargando...</div></div>
+    </div>
+</div>
+
+<!-- Modal Editar Usuario -->
+<div id="modalEditarUsuario" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>✏️ Editar Usuario</h3>
+            <button class="close-btn" onclick="cerrarModalEditar()">&times;</button>
+        </div>
+        <input type="hidden" id="editUserId">
+        <div class="form-group">
+            <label>Nombre</label>
+            <input type="text" id="editUserNombre" disabled style="background:#f5f5f5; color:#999;">
+        </div>
+        <div class="form-group">
+            <label>Email</label>
+            <input type="text" id="editUserEmail" disabled style="background:#f5f5f5; color:#999;">
+        </div>
+        <div class="toggle-row">
+            <label>✅ Cuenta activa</label>
+            <input type="checkbox" id="editUserActivo">
+        </div>
+        <div class="toggle-row">
+            <label>🔑 Es administrador</label>
+            <input type="checkbox" id="editUserAdmin">
+        </div>
+        <div class="toggle-row" style="border:none; margin-bottom:20px;">
+            <label>📧 Email verificado</label>
+            <input type="checkbox" id="editUserVerificado">
+        </div>
+        <div id="mensajeEditUser" style="margin-bottom:10px;"></div>
+        <div style="display:flex; gap:10px;">
+            <button class="btn btn-primary" onclick="guardarEditUser()">Guardar</button>
+            <button class="btn btn-secondary" onclick="cerrarModalEditar()">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Confirmación -->
+<div id="modalConfirm" class="modal modal-confirm">
+    <div class="modal-content">
+        <div class="modal-icon" id="confirmIcon">⚠️</div>
+        <h3 id="confirmTitulo">¿Estás seguro?</h3>
+        <p id="confirmMensaje"></p>
+        <div class="btn-group">
+            <button id="confirmAceptar" class="btn btn-danger">Confirmar</button>
+            <button onclick="cerrarConfirm()" class="btn btn-secondary">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Éxito -->
+<div id="modalExito" class="modal modal-feedback">
+    <div class="modal-content">
+        <div class="modal-icon">✅</div>
+        <h3 style="color:#28a745; margin-bottom:10px;">¡Listo!</h3>
+        <p id="mensajeExito"></p>
+        <button class="btn btn-success" onclick="cerrarFeedback('modalExito')">Aceptar</button>
+    </div>
+</div>
+
+<!-- Modal Error -->
+<div id="modalError" class="modal modal-feedback">
+    <div class="modal-content">
+        <div class="modal-icon">❌</div>
+        <h3 style="color:#dc3545; margin-bottom:10px;">Error</h3>
+        <p id="mensajeError"></p>
+        <button class="btn btn-danger" onclick="cerrarFeedback('modalError')">Aceptar</button>
+    </div>
+</div>
+
+<script>
+const token = localStorage.getItem('token');
+let todosUsuarios = [];
+let _confirmCallback = null;
+
+// ==================== MODALES ====================
+
+function mostrarConfirm(mensaje, callback, titulo = '¿Estás seguro?', icono = '⚠️') {
+    document.getElementById('confirmMensaje').textContent = mensaje;
+    document.getElementById('confirmTitulo').textContent = titulo;
+    document.getElementById('confirmIcon').textContent = icono;
+    _confirmCallback = callback;
+    document.getElementById('modalConfirm').classList.add('active');
+}
+
+function cerrarConfirm() {
+    document.getElementById('modalConfirm').classList.remove('active');
+    _confirmCallback = null;
+}
+
+function mostrarExito(msg) {
+    document.getElementById('mensajeExito').textContent = msg;
+    document.getElementById('modalExito').classList.add('active');
+}
+
+function mostrarError(msg) {
+    document.getElementById('mensajeError').textContent = msg;
+    document.getElementById('modalError').classList.add('active');
+}
+
+function cerrarFeedback(id) {
+    document.getElementById(id).classList.remove('active');
+}
+
+// ==================== INIT ====================
+
+document.addEventListener('DOMContentLoaded', async () => {
+    document.getElementById('confirmAceptar').onclick = () => {
+        const cb = _confirmCallback;
+        cerrarConfirm();
+        if (cb) cb();
+    };
+
+    if (!token) { window.location.href = '/login.html'; return; }
+    const res = await fetch('/api/usuario', { headers: { 'Authorization': `Bearer ${token}` } });
+    if (!res.ok) { window.location.href = '/login.html'; return; }
+    const usuario = await res.json();
+    if (!usuario.es_admin) { window.location.href = '/dashboard.html'; return; }
+    document.getElementById('adminNombre').textContent = usuario.nombre;
+    await cargarUsuarios();
+});
+
+// ==================== TABLA USUARIOS ====================
+
+async function cargarUsuarios() {
+    try {
+        const res = await fetch('/api/admin/usuarios', { headers: { 'Authorization': `Bearer ${token}` } });
+        todosUsuarios = await res.json();
+        renderTabla(todosUsuarios);
+    } catch (e) {
+        document.getElementById('tablaUsuariosContainer').innerHTML = '<div class="empty-state">Error al cargar usuarios</div>';
+    }
+}
+
+function filtrarUsuarios() {
+    const q = document.getElementById('buscarUsuario').value.toLowerCase();
+    const filtrados = todosUsuarios.filter(u =>
+        u.nombre.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q) ||
+        (u.dni && u.dni.toLowerCase().includes(q))
+    );
+    renderTabla(filtrados);
+}
+
+function renderTabla(lista) {
+    const container = document.getElementById('tablaUsuariosContainer');
+    if (lista.length === 0) {
+        container.innerHTML = '<div class="empty-state">No se encontraron usuarios</div>';
+        return;
+    }
+    container.innerHTML = `
+        <table class="tabla-abm">
+            <thead><tr>
+                <th>Nombre</th>
+                <th>Email</th>
+                <th>Estado</th>
+                <th>Rol</th>
+                <th>Email</th>
+                <th>Registro</th>
+                <th>Acciones</th>
+            </tr></thead>
+            <tbody>
+                ${lista.map(u => `<tr>
+                    <td>${u.nombre}</td>
+                    <td style="font-size:0.82rem;">${u.email}</td>
+                    <td><span class="badge-estado ${u.activo ? 'badge-activo' : 'badge-inactivo'}">${u.activo ? 'Activo' : 'Inactivo'}</span></td>
+                    <td>${u.es_admin ? '<span class="badge-estado badge-admin">Admin</span>' : 'Usuario'}</td>
+                    <td><span class="badge-estado ${u.email_verificado ? 'badge-verificado' : 'badge-no-verificado'}">${u.email_verificado ? '✓ Verificado' : '⚠ Pendiente'}</span></td>
+                    <td style="font-size:0.82rem;">${new Date(u.fecha_registro).toLocaleDateString('es-AR')}</td>
+                    <td><div class="acciones">
+                        <button class="btn btn-warning" onclick="abrirEditar(${u.id})">✏️</button>
+                        <button class="btn btn-danger" onclick="pedirEliminar(${u.id}, '${u.nombre.replace(/'/g, "\\'")}')">🗑️</button>
+                    </div></td>
+                </tr>`).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+// ==================== EDITAR ====================
+
+function abrirEditar(id) {
+    const u = todosUsuarios.find(x => x.id === id);
+    if (!u) return;
+    document.getElementById('editUserId').value = u.id;
+    document.getElementById('editUserNombre').value = u.nombre;
+    document.getElementById('editUserEmail').value = u.email;
+    document.getElementById('editUserActivo').checked = u.activo === 1;
+    document.getElementById('editUserAdmin').checked = u.es_admin === 1;
+    document.getElementById('editUserVerificado').checked = u.email_verificado === 1;
+    document.getElementById('mensajeEditUser').innerHTML = '';
+    document.getElementById('modalEditarUsuario').classList.add('active');
+}
+
+function cerrarModalEditar() {
+    document.getElementById('modalEditarUsuario').classList.remove('active');
+}
+
+async function guardarEditUser() {
+    const id = document.getElementById('editUserId').value;
+    const activo = document.getElementById('editUserActivo').checked ? 1 : 0;
+    const es_admin = document.getElementById('editUserAdmin').checked ? 1 : 0;
+    const email_verificado = document.getElementById('editUserVerificado').checked ? 1 : 0;
+    const msgDiv = document.getElementById('mensajeEditUser');
+
+    const res = await fetch(`/api/admin/usuarios/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ activo, es_admin, email_verificado })
+    });
+
+    if (res.ok) {
+        cerrarModalEditar();
+        await cargarUsuarios();
+        mostrarExito('Usuario actualizado correctamente');
+    } else {
+        const err = await res.json();
+        msgDiv.innerHTML = `<div class="alert alert-warning">❌ ${err.error}</div>`;
+    }
+}
+
+// ==================== ELIMINAR ====================
+
+function pedirEliminar(id, nombre) {
+    mostrarConfirm(
+        `¿Eliminar al usuario "${nombre}"? Se eliminarán también todos sus cargos registrados. Esta acción no se puede deshacer.`,
+        async () => {
+            const res = await fetch(`/api/admin/usuarios/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                await cargarUsuarios();
+                mostrarExito('Usuario eliminado correctamente');
+            } else {
+                const err = await res.json();
+                mostrarError(err.error || 'Error al eliminar el usuario');
+            }
+        },
+        'Eliminar usuario', '🗑️'
+    );
+}
+
+function logout() { localStorage.removeItem('token'); window.location.href = '/login.html'; }
+</script>
+</body>
+</html>
