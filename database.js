@@ -1,7 +1,9 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
-const dbPath = path.join(__dirname, 'permutapp.db');
+const dbPath = process.env.NODE_ENV === 'production'
+    ? '/data/permutapp.db'
+    : path.join(__dirname, 'permutapp.db');
 const db = new sqlite3.Database(dbPath);
 
 function initDatabase() {
