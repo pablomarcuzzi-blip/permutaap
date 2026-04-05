@@ -132,6 +132,69 @@
         .fab-escuelas { background: linear-gradient(135deg, #f7971e 0%, #e65c00 100%); }
         .fab-tutorial { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: #1a3a1a; }
 
+        /* ==================== RESPONSIVE MÓVIL ==================== */
+        @media (max-width: 600px) {
+            body { padding: 0; }
+            .container { border-radius: 0; }
+
+            /* Header */
+            .header { padding: 15px; flex-direction: column; align-items: flex-start; gap: 10px; }
+            .header h1 { font-size: 1.4rem; }
+            .user-info { text-align: left; width: 100%; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+
+            /* Contenido */
+            .content { padding: 15px; gap: 20px; }
+            .main-section h2 { font-size: 1rem; }
+            .form-container { padding: 15px; }
+
+            /* Formulario */
+            .form-group input, .form-group select { font-size: 16px; }
+            .form-grid-2 { grid-template-columns: 1fr; }
+
+            /* Cargos */
+            .cargo-card { padding: 14px; }
+            .cargo-header { flex-direction: column; gap: 6px; }
+            .cargo-title { font-size: 1rem; }
+            .cargo-actions { gap: 8px; }
+            .btn-small { font-size: 0.8rem; padding: 6px 10px; }
+
+            /* Sidebar */
+            .sidebar { padding: 15px; }
+
+            /* Botones flotantes — se mueven abajo en móvil */
+            .fab-container {
+                position: fixed;
+                right: 0;
+                left: 0;
+                bottom: 0;
+                top: auto;
+                transform: none;
+                flex-direction: row;
+                justify-content: center;
+                gap: 8px;
+                padding: 10px 12px;
+                background: rgba(255,255,255,0.95);
+                box-shadow: 0 -2px 12px rgba(0,0,0,0.15);
+                z-index: 500;
+            }
+            .fab-btn {
+                flex: 1;
+                justify-content: center;
+                padding: 10px 8px;
+                font-size: 0.78rem;
+                border-radius: 10px;
+            }
+
+            /* Espacio extra para que la barra inferior no tape el contenido */
+            .content { padding-bottom: 80px; }
+
+            /* Modales */
+            .modal-content { padding: 20px; width: 95%; }
+            .coincidencias-modal .modal-content { max-height: 95vh; }
+            .coincidencia-email { flex-direction: column; align-items: flex-start; }
+            .modal-tutorial .modal-content { max-height: 95vh; }
+        }
+
         /* Modal Tutorial */
         .modal-tutorial .modal-content { max-width: 620px; max-height: 80vh; overflow-y: auto; text-align: left; }
         .tutorial-section { margin-bottom: 20px; }
