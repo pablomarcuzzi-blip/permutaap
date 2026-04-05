@@ -127,11 +127,12 @@ const adminMiddleware = (req, res, next) => {
 // ==================== AUTH ====================
 
 app.post('/api/registro', async (req, res) => {
-    const { email, password, nombre, telefono } = req.body;
+    const { password, nombre, telefono } = req.body;
+    const email = (req.body.email || '').toLowerCase().trim();
     if (!email || !password || !nombre) return res.status(400).json({ error: 'Faltan datos obligatorios' });
 
     // Validar dominio @bue.edu.ar
-    if (!email.toLowerCase().endsWith('@bue.edu.ar')) {
+    if (!email.endsWith('@bue.edu.ar')) {
         return res.status(400).json({ error: 'Solo se permite el correo institucional (@bue.edu.ar)' });
     }
 
@@ -162,7 +163,8 @@ app.post('/api/registro', async (req, res) => {
 });
 
 app.post('/api/login', (req, res) => {
-    const { email, password } = req.body;
+    const email = (req.body.email || '').toLowerCase().trim();
+    const { password } = req.body;
     buscarUsuarioPorEmail(email, async (err, user) => {
         if (err || !user) return res.status(401).json({ error: 'Credenciales inválidas' });
         const validPassword = await bcrypt.compare(password, user.password);
@@ -233,7 +235,7 @@ app.get('/api/usuario', authMiddleware, (req, res) => {
 // ==================== RECUPERAR CONTRASEÑA ====================
 
 app.post('/api/recuperar-password', (req, res) => {
-    const { email } = req.body;
+    const email = (req.body.email || '').toLowerCase().trim();
     if (!email) return res.status(400).json({ error: 'Email requerido' });
 
     buscarUsuarioPorEmail(email, async (err, user) => {
