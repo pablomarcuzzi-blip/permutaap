@@ -10,6 +10,7 @@ const {
     db, initDatabase,
     registrarUsuario, buscarUsuarioPorEmail, buscarUsuarioPorDni,
     buscarUsuarioPorToken, verificarEmailUsuario, actualizarTokenVerificacion,
+    guardarTokenReset, buscarUsuarioPorTokenReset, resetearPassword,
     registrarCargo, obtenerCargosPorUsuario, obtenerCargoPorId, actualizarCargo, eliminarCargo,
     obtenerAreas, obtenerTiposPorArea, crearTipo,
     obtenerEscuelas, buscarEscuelaPorCUE, buscarEscuelasPorNombre, obtenerEscuelasCatalogo,
@@ -76,6 +77,26 @@ async function enviarEmailVerificacion(email, nombre, token) {
         </div>
     `;
     return enviarEmail(email, 'Verificá tu cuenta en PermutApp', html);
+}
+
+async function enviarEmailReset(email, nombre, token) {
+    const link = `${BASE_URL}/nueva-password.html?token=${token}`;
+    const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 30px;">
+            <h2 style="color: #667eea;">📚 PermutApp</h2>
+            <p>Hola <strong>${nombre}</strong>,</p>
+            <p>Recibimos una solicitud para restablecer tu contraseña. Hacé clic en el siguiente botón:</p>
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="${link}" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;">
+                    Restablecer contraseña
+                </a>
+            </div>
+            <p style="color: #666; font-size: 14px;">Este enlace vence en 2 horas. Si no solicitaste este cambio, ignorá este mensaje.</p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+            <p style="color: #999; font-size: 12px;">PermutApp — Intercambio de Cargos Docentes CABA</p>
+        </div>
+    `;
+    return enviarEmail(email, 'Restablecé tu contraseña en PermutApp', html);
 }
 
 // ==================== MIDDLEWARE ====================
@@ -206,6 +227,49 @@ app.get('/api/usuario', authMiddleware, (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
         res.json(user);
+    });
+});
+
+// ==================== RECUPERAR CONTRASEÑA ====================
+
+app.post('/api/recuperar-password', (req, res) => {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email requerido' });
+
+    buscarUsuarioPorEmail(email, async (err, user) => {
+        // Siempre responder igual para no revelar si el email existe
+        if (err || !user) return res.json({ message: 'Si el email está registrado, recibirás instrucciones.' });
+
+        const token = crypto.randomBytes(32).toString('hex');
+        const tokenExpira = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(); // 2 horas
+
+        guardarTokenReset(user.id, token, tokenExpira, async (err) => {
+            if (err) return res.status(500).json({ error: err.message });
+            try {
+                await enviarEmailReset(user.email, user.nombre, token);
+            } catch (emailErr) {
+                console.error('Error al enviar email de reset:', emailErr.message);
+            }
+            res.json({ message: 'Si el email está registrado, recibirás instrucciones.' });
+        });
+    });
+});
+
+app.post('/api/nueva-password', async (req, res) => {
+    const { token, password } = req.body;
+    if (!token || !password) return res.status(400).json({ error: 'Datos incompletos' });
+    if (password.length < 6) return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+
+    buscarUsuarioPorTokenReset(token, async (err, user) => {
+        if (err || !user) return res.status(400).json({ error: 'Token inválido' });
+        if (new Date(user.token_reset_expira) < new Date()) {
+            return res.status(410).json({ error: 'token_vencido' });
+        }
+        const hashedPassword = await bcrypt.hash(password, 10);
+        resetearPassword(user.id, hashedPassword, (err) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ message: 'Contraseña actualizada correctamente' });
+        });
     });
 });
 

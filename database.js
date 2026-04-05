@@ -105,6 +105,8 @@ function initDatabase() {
         db.run(`ALTER TABLE usuarios ADD COLUMN email_verificado INTEGER DEFAULT 0`, () => {});
         db.run(`ALTER TABLE usuarios ADD COLUMN token_verificacion TEXT`, () => {});
         db.run(`ALTER TABLE usuarios ADD COLUMN token_expira DATETIME`, () => {});
+        db.run(`ALTER TABLE usuarios ADD COLUMN token_reset TEXT`, () => {});
+        db.run(`ALTER TABLE usuarios ADD COLUMN token_reset_expira DATETIME`, () => {});
 
         console.log('✅ Base de datos inicializada');
         insertarAreasYTiposIniciales();
@@ -213,6 +215,20 @@ const verificarEmailUsuario = (userId, callback) => {
 const actualizarTokenVerificacion = (userId, token, tokenExpira, callback) => {
     db.run(`UPDATE usuarios SET token_verificacion = ?, token_expira = ? WHERE id = ?`,
         [token, tokenExpira, userId], function(err) { callback(err, this ? this.changes : 0); });
+};
+
+const guardarTokenReset = (userId, token, tokenExpira, callback) => {
+    db.run(`UPDATE usuarios SET token_reset = ?, token_reset_expira = ? WHERE id = ?`,
+        [token, tokenExpira, userId], function(err) { callback(err, this ? this.changes : 0); });
+};
+
+const buscarUsuarioPorTokenReset = (token, callback) => {
+    db.get(`SELECT * FROM usuarios WHERE token_reset = ?`, [token], callback);
+};
+
+const resetearPassword = (userId, hashedPassword, callback) => {
+    db.run(`UPDATE usuarios SET password = ?, token_reset = NULL, token_reset_expira = NULL WHERE id = ?`,
+        [hashedPassword, userId], function(err) { callback(err, this ? this.changes : 0); });
 };
 
 // ==================== CARGOS ====================
@@ -528,6 +544,7 @@ module.exports = {
     db, initDatabase,
     registrarUsuario, buscarUsuarioPorEmail, buscarUsuarioPorDni,
     buscarUsuarioPorToken, verificarEmailUsuario, actualizarTokenVerificacion,
+    guardarTokenReset, buscarUsuarioPorTokenReset, resetearPassword,
     registrarCargo, obtenerCargosPorUsuario, obtenerCargoPorId, actualizarCargo, eliminarCargo,
     obtenerAreas, obtenerTiposPorArea, crearTipo,
     obtenerEscuelas, buscarEscuelaPorCUE, buscarEscuelasPorNombre, obtenerEscuelasCatalogo,
