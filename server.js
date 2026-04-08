@@ -38,6 +38,7 @@ app.use(cors());
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(express.json());
 app.use(express.static('public'));
+app.set('trust proxy', 1);
 
 // ==================== RATE LIMITING ====================
 
