@@ -35,7 +35,7 @@ const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 
 app.use(cors());
-app.use(helmet());
+app.use(helmet({ contentSecurityPolicy: false }));
 app.use(express.json());
 app.use(express.static('public'));
 
