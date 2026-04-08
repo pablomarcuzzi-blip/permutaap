@@ -29,7 +29,7 @@ const {
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'permutapp_secret_key';
-const RESEND_API_KEY = process.env.RESEND_API_KEY || 're_QfoByixD_pWcnffJzDo2Dbs3FoBvpGi27';
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 
 app.use(cors());
