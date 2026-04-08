@@ -69,7 +69,7 @@ async function enviarEmail(to, subject, html) {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            from: 'PermutApp <onboarding@resend.dev>',
+            from: 'PermutApp <noreply@permutapp.ar>',
             to,
             subject,
             html
