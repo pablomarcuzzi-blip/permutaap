@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const path = require('path');
 const crypto = require('crypto');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 const {
@@ -35,6 +36,24 @@ const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
+
+// ==================== RATE LIMITING ====================
+
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutos
+    max: 10, // máximo 10 intentos por IP
+    message: { error: 'Demasiados intentos. Esperá 15 minutos e intentá de nuevo.' },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+const recuperarPasswordLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hora
+    max: 5, // máximo 5 solicitudes por IP
+    message: { error: 'Demasiadas solicitudes. Esperá 1 hora e intentá de nuevo.' },
+    standardHeaders: true,
+    legacyHeaders: false
+});
 
 initDatabase();
 
@@ -162,7 +181,7 @@ app.post('/api/registro', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/login', (req, res) => {
+app.post('/api/login', loginLimiter, (req, res) => {
     const email = (req.body.email || '').toLowerCase().trim();
     const { password } = req.body;
     buscarUsuarioPorEmail(email, async (err, user) => {
@@ -234,7 +253,7 @@ app.get('/api/usuario', authMiddleware, (req, res) => {
 
 // ==================== RECUPERAR CONTRASEÑA ====================
 
-app.post('/api/recuperar-password', (req, res) => {
+app.post('/api/recuperar-password', recuperarPasswordLimiter, (req, res) => {
     const email = (req.body.email || '').toLowerCase().trim();
     if (!email) return res.status(400).json({ error: 'Email requerido' });
 
