@@ -289,6 +289,19 @@
                         <small>Revisá también la carpeta de spam.</small>
                     `;
                     successDiv.style.display = 'block';
+                } else if (data.error === 'email_pendiente_verificacion') {
+                    document.getElementById('registerForm').style.display = 'none';
+                    successDiv.innerHTML = `
+                        <span class="icon">⏳</span>
+                        <strong>Este correo ya está registrado</strong><br>
+                        pero todavía no fue verificado.<br><br>
+                        ¿Querés que te reenviemos el email de verificación?<br><br>
+                        <button onclick="reenviarVerificacion('${email}')" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: 600;">
+                            Reenviar email de verificación
+                        </button>
+                        <div id="reenvioMsg" style="margin-top: 12px; font-size: 14px;"></div>
+                    `;
+                    successDiv.style.display = 'block';
                 } else {
                     errorDiv.textContent = data.error || 'Error al registrar';
                     errorDiv.style.display = 'block';
@@ -302,6 +315,29 @@
                 btn.textContent = 'Crear cuenta';
             }
         });
+
+        async function reenviarVerificacion(email) {
+            const msg = document.getElementById('reenvioMsg');
+            msg.textContent = 'Enviando...';
+            try {
+                const res = await fetch('/api/reenviar-verificacion', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    msg.style.color = '#3a7';
+                    msg.textContent = '✅ Email enviado. Revisá tu bandeja y la carpeta de spam.';
+                } else {
+                    msg.style.color = '#c33';
+                    msg.textContent = data.error || 'Error al reenviar. Intentá más tarde.';
+                }
+            } catch {
+                msg.style.color = '#c33';
+                msg.textContent = 'Error de conexión.';
+            }
+        }
 
         function togglePassword(id, btn) {
             const input = document.getElementById(id);

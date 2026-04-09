@@ -161,7 +161,12 @@ app.post('/api/registro', async (req, res) => {
     try {
         const hashedPassword = await bcrypt.hash(password, 10);
         buscarUsuarioPorEmail(email, async (err, user) => {
-            if (user) return res.status(409).json({ error: 'Email ya registrado' });
+            if (user) {
+                if (!user.email_verificado) {
+                    return res.status(409).json({ error: 'email_pendiente_verificacion', email });
+                }
+                return res.status(409).json({ error: 'Email ya registrado' });
+            }
 
             // Generar token de verificación
             const token = crypto.randomBytes(32).toString('hex');
