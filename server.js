@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const path = require('path');
 const crypto = require('crypto');
+const fs = require('fs');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 require('dotenv').config();
@@ -33,6 +34,9 @@ const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'permutapp_secret_key';
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
+const GITHUB_BACKUP_TOKEN = process.env.GITHUB_BACKUP_TOKEN;
+const GITHUB_BACKUP_REPO = 'pablomarcuzzi-blip/permutapp-backup';
+const DB_PATH = process.env.NODE_ENV === 'production' ? '/data/permutapp.db' : path.join(__dirname, 'permutapp.db');
 
 app.use(cors());
 app.use(helmet({ contentSecurityPolicy: false }));
@@ -43,22 +47,76 @@ app.set('trust proxy', 1);
 // ==================== RATE LIMITING ====================
 
 const loginLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutos
-    max: 10, // máximo 10 intentos por IP
+    windowMs: 15 * 60 * 1000,
+    max: 10,
     message: { error: 'Demasiados intentos. Esperá 15 minutos e intentá de nuevo.' },
     standardHeaders: true,
     legacyHeaders: false
 });
 
 const recuperarPasswordLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000, // 1 hora
-    max: 5, // máximo 5 solicitudes por IP
+    windowMs: 60 * 60 * 1000,
+    max: 5,
     message: { error: 'Demasiadas solicitudes. Esperá 1 hora e intentá de nuevo.' },
     standardHeaders: true,
     legacyHeaders: false
 });
 
 initDatabase();
+
+// ==================== BACKUP A GITHUB ====================
+
+async function hacerBackup() {
+    if (!GITHUB_BACKUP_TOKEN) {
+        console.error('❌ Backup: GITHUB_BACKUP_TOKEN no configurado');
+        return { ok: false, error: 'Token no configurado' };
+    }
+
+    try {
+        const dbBuffer = fs.readFileSync(DB_PATH);
+        const contenidoBase64 = dbBuffer.toString('base64');
+
+        const ahora = new Date();
+        const fecha = ahora.toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        const fileName = `permutapp-${fecha}.db`;
+        const filePath = `backups/${fileName}`;
+
+        // Subir archivo al repo de GitHub
+        const response = await fetch(`https://api.github.com/repos/${GITHUB_BACKUP_REPO}/contents/${filePath}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${GITHUB_BACKUP_TOKEN}`,
+                'Content-Type': 'application/json',
+                'User-Agent': 'PermutApp-Backup'
+            },
+            body: JSON.stringify({
+                message: `Backup automático ${fecha}`,
+                content: contenidoBase64
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            console.error('❌ Backup fallido:', data.message);
+            return { ok: false, error: data.message };
+        }
+
+        console.log(`✅ Backup exitoso: ${fileName}`);
+        return { ok: true, archivo: fileName };
+
+    } catch (err) {
+        console.error('❌ Error en backup:', err.message);
+        return { ok: false, error: err.message };
+    }
+}
+
+// Backup automático cada 24 horas
+const INTERVALO_BACKUP = 24 * 60 * 60 * 1000;
+setTimeout(() => {
+    hacerBackup();
+    setInterval(hacerBackup, INTERVALO_BACKUP);
+}, 60 * 1000); // Espera 1 minuto tras arrancar el servidor para el primer backup
 
 // ==================== EMAIL (RESEND) ====================
 
@@ -153,7 +211,6 @@ app.post('/api/registro', async (req, res) => {
     const email = (req.body.email || '').toLowerCase().trim();
     if (!email || !password || !nombre) return res.status(400).json({ error: 'Faltan datos obligatorios' });
 
-    // Validar dominio @bue.edu.ar
     if (!email.endsWith('@bue.edu.ar')) {
         return res.status(400).json({ error: 'Solo se permite el correo institucional (@bue.edu.ar)' });
     }
@@ -168,19 +225,16 @@ app.post('/api/registro', async (req, res) => {
                 return res.status(409).json({ error: 'Email ya registrado' });
             }
 
-            // Generar token de verificación
             const token = crypto.randomBytes(32).toString('hex');
             const tokenExpira = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
 
             registrarUsuario(email, hashedPassword, nombre, 'TEMP_' + Date.now(), telefono, token, tokenExpira, async (err, userId) => {
                 if (err) return res.status(500).json({ error: err.message });
 
-                // Enviar email de verificación
                 try {
                     await enviarEmailVerificacion(email, nombre, token);
                 } catch (emailErr) {
                     console.error('Error al enviar email de verificación:', emailErr.message);
-                    // No bloquear el registro si falla el email, pero avisamos
                 }
 
                 res.status(201).json({ message: 'Cuenta creada. Revisá tu correo para verificar tu cuenta.' });
@@ -197,7 +251,6 @@ app.post('/api/login', loginLimiter, (req, res) => {
         const validPassword = await bcrypt.compare(password, user.password);
         if (!validPassword) return res.status(401).json({ error: 'Credenciales inválidas' });
 
-        // Verificar si el email fue confirmado
         if (!user.email_verificado) {
             return res.status(403).json({ error: 'email_no_verificado', userId: user.id });
         }
@@ -216,7 +269,6 @@ app.get('/api/verificar-email', (req, res) => {
     buscarUsuarioPorToken(token, (err, user) => {
         if (err || !user) return res.status(400).json({ error: 'Token inválido' });
 
-        // Verificar si venció
         if (new Date(user.token_expira) < new Date()) {
             return res.status(410).json({ error: 'token_vencido', userId: user.id });
         }
@@ -266,11 +318,10 @@ app.post('/api/recuperar-password', recuperarPasswordLimiter, (req, res) => {
     if (!email) return res.status(400).json({ error: 'Email requerido' });
 
     buscarUsuarioPorEmail(email, async (err, user) => {
-        // Siempre responder igual para no revelar si el email existe
         if (err || !user) return res.json({ message: 'Si el email está registrado, recibirás instrucciones.' });
 
         const token = crypto.randomBytes(32).toString('hex');
-        const tokenExpira = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(); // 2 horas
+        const tokenExpira = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
 
         guardarTokenReset(user.id, token, tokenExpira, async (err) => {
             if (err) return res.status(500).json({ error: err.message });
@@ -690,6 +741,17 @@ app.get('/api/admin/pendientes-viejos', adminMiddleware, (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(pendientes);
     });
+});
+
+// ==================== ADMIN — BACKUP MANUAL ====================
+
+app.post('/api/admin/backup', adminMiddleware, async (req, res) => {
+    const resultado = await hacerBackup();
+    if (resultado.ok) {
+        res.json({ message: `Backup realizado: ${resultado.archivo}` });
+    } else {
+        res.status(500).json({ error: `Error en backup: ${resultado.error}` });
+    }
 });
 
 // ==================== RUTA PRINCIPAL ====================
