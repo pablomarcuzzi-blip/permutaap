@@ -35,7 +35,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'permutapp_secret_key';
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 const GITHUB_BACKUP_TOKEN = process.env.GITHUB_BACKUP_TOKEN;
-const GITHUB_BACKUP_REPO = 'pablomarcuzzi-blip/permutapp-backup';
+const GITHUB_BACKUP_REPO = 'pablomarcuzzi-blip/permutaap-backup';
 const DB_PATH = process.env.NODE_ENV === 'production' ? '/data/permutapp.db' : path.join(__dirname, 'permutapp.db');
 
 app.use(cors());
