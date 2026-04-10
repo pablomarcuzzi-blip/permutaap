@@ -95,6 +95,10 @@ async function cargarUsuario() {
                 document.getElementById('adminLink').style.display = 'inline';
                 cargarBadgeAdmin();
             }
+            // Mostrar TyC si no fue aceptado aún
+            if (!usuarioActual.acepto_tyc) {
+                document.getElementById('modalTyC').style.display = 'flex';
+            }
         } else { logout(); }
     } catch (error) { logout(); }
 }
@@ -1077,7 +1081,7 @@ async function guardarNuevoTipo() {
 }
 
 window.onclick = function(event) {
-    ['modalNuevaEscuela', 'modalCoincidencias', 'modalProponerCargo'].forEach(id => {
+    ['modalNuevaEscuela', 'modalCoincidencias', 'modalProponerCargo', 'modalContacto', 'modalBaja'].forEach(id => {
         const modal = document.getElementById(id);
         if (modal && event.target === modal) modal.style.display = 'none';
     });
@@ -1158,4 +1162,124 @@ function generarPDF() {
 function logout() {
     localStorage.removeItem('token');
     window.location.href = '/login.html';
+}
+
+// ==========================================
+// TÉRMINOS Y CONDICIONES
+// ==========================================
+
+async function aceptarTyC() {
+    const check = document.getElementById('checkTyC');
+    if (!check.checked) {
+        mostrarModal('advertencia', 'Tenés que leer y aceptar los Términos y Condiciones para continuar.');
+        return;
+    }
+    try {
+        const res = await fetch('/api/aceptar-tyc', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (res.ok) {
+            document.getElementById('modalTyC').style.display = 'none';
+            if (usuarioActual) usuarioActual.acepto_tyc = 1;
+        } else {
+            mostrarModal('error', 'No se pudo registrar la aceptación. Intentá de nuevo.');
+        }
+    } catch (e) {
+        mostrarModal('error', 'Error de conexión.');
+    }
+}
+
+// ==========================================
+// CONTACTO
+// ==========================================
+
+function abrirModalContacto() {
+    document.getElementById('modalContacto').style.display = 'flex';
+}
+
+function cerrarModalContacto() {
+    document.getElementById('modalContacto').style.display = 'none';
+    document.getElementById('contactoAsunto').value = '';
+    document.getElementById('contactoMensaje').value = '';
+    document.getElementById('charCounter').textContent = '0 / 500';
+    document.getElementById('charCounter').className = 'char-counter';
+}
+
+function actualizarContador() {
+    const len = document.getElementById('contactoMensaje').value.length;
+    const counter = document.getElementById('charCounter');
+    counter.textContent = `${len} / 500`;
+    counter.className = 'char-counter' + (len >= 500 ? ' limite' : len >= 400 ? ' cerca' : '');
+}
+
+async function enviarContacto() {
+    const asunto = document.getElementById('contactoAsunto').value;
+    const mensaje = document.getElementById('contactoMensaje').value.trim();
+    if (!asunto) { mostrarModal('advertencia', 'Seleccioná un asunto'); return; }
+    if (!mensaje) { mostrarModal('advertencia', 'Escribí un mensaje'); return; }
+    if (mensaje.length > 500) { mostrarModal('advertencia', 'El mensaje no puede superar los 500 caracteres'); return; }
+
+    try {
+        const res = await fetch('/api/contacto', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+            body: JSON.stringify({ asunto, mensaje })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            cerrarModalContacto();
+            mostrarModal('exito', data.message);
+        } else {
+            mostrarModal('error', data.error || 'No se pudo enviar el mensaje');
+        }
+    } catch (e) { mostrarModal('error', 'Error de conexión'); }
+}
+
+// ==========================================
+// BAJA DE CUENTA
+// ==========================================
+
+function abrirModalBaja() {
+    document.getElementById('modalBaja').style.display = 'flex';
+}
+
+function cerrarModalBaja() {
+    document.getElementById('modalBaja').style.display = 'none';
+    document.getElementById('bajaPassword').value = '';
+}
+
+function toggleBajaPassword() {
+    const input = document.getElementById('bajaPassword');
+    input.type = input.type === 'password' ? 'text' : 'password';
+}
+
+function confirmarBaja() {
+    const password = document.getElementById('bajaPassword').value;
+    if (!password) { mostrarModal('advertencia', 'Ingresá tu contraseña para confirmar la baja'); return; }
+
+    mostrarConfirm(
+        '¿Confirmás que querés dar de baja tu cuenta? Tus datos se conservarán 30 días y luego se eliminarán definitivamente.',
+        async () => {
+            try {
+                const res = await fetch('/api/baja-cuenta', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+                    body: JSON.stringify({ password })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    cerrarModalBaja();
+                    document.getElementById('mensajeExito').textContent = 'Tu cuenta fue dada de baja. Serás redirigido al inicio.';
+                    document.getElementById('modalExito').style.display = 'flex';
+                    document.getElementById('modalExito').querySelector('button').onclick = () => logout();
+                    setTimeout(() => logout(), 4000);
+                } else {
+                    mostrarModal('error', data.error || 'No se pudo procesar la baja');
+                }
+            } catch (e) { mostrarModal('error', 'Error de conexión'); }
+        },
+        'Confirmar baja de cuenta',
+        '🚪'
+    );
 }

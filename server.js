@@ -64,6 +64,11 @@ const recuperarPasswordLimiter = rateLimit({
 
 initDatabase();
 
+// ==================== MIGRACIÓN: acepto_tyc y fecha_baja ====================
+
+db.run(`ALTER TABLE usuarios ADD COLUMN acepto_tyc INTEGER DEFAULT 0`, () => {});
+db.run(`ALTER TABLE usuarios ADD COLUMN fecha_baja TEXT`, () => {});
+
 // ==================== BACKUP A GITHUB ====================
 
 async function hacerBackup() {
@@ -71,17 +76,13 @@ async function hacerBackup() {
         console.error('❌ Backup: GITHUB_BACKUP_TOKEN no configurado');
         return { ok: false, error: 'Token no configurado' };
     }
-
     try {
         const dbBuffer = fs.readFileSync(DB_PATH);
         const contenidoBase64 = dbBuffer.toString('base64');
-
         const ahora = new Date();
         const fecha = ahora.toISOString().replace(/[:.]/g, '-').slice(0, 19);
         const fileName = `permutapp-${fecha}.db`;
         const filePath = `backups/${fileName}`;
-
-        // Subir archivo al repo de GitHub
         const response = await fetch(`https://api.github.com/repos/${GITHUB_BACKUP_REPO}/contents/${filePath}`, {
             method: 'PUT',
             headers: {
@@ -94,29 +95,42 @@ async function hacerBackup() {
                 content: contenidoBase64
             })
         });
-
         const data = await response.json();
-
         if (!response.ok) {
             console.error('❌ Backup fallido:', data.message);
             return { ok: false, error: data.message };
         }
-
         console.log(`✅ Backup exitoso: ${fileName}`);
         return { ok: true, archivo: fileName };
-
     } catch (err) {
         console.error('❌ Error en backup:', err.message);
         return { ok: false, error: err.message };
     }
 }
 
-// Backup automático cada 24 horas
-const INTERVALO_BACKUP = 24 * 60 * 60 * 1000;
+// Backup automático cada 24 horas (espera 1 minuto tras arrancar)
 setTimeout(() => {
     hacerBackup();
-    setInterval(hacerBackup, INTERVALO_BACKUP);
-}, 60 * 1000); // Espera 1 minuto tras arrancar el servidor para el primer backup
+    setInterval(hacerBackup, 24 * 60 * 60 * 1000);
+}, 60 * 1000);
+
+// ==================== BORRADO AUTOMÁTICO DE CUENTAS DADAS DE BAJA (30 días) ====================
+
+function borrarCuentasVencidas() {
+    const hace30dias = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    db.all(`SELECT id FROM usuarios WHERE fecha_baja IS NOT NULL AND fecha_baja < ?`, [hace30dias], (err, usuarios) => {
+        if (err || !usuarios || usuarios.length === 0) return;
+        usuarios.forEach(u => {
+            db.run(`DELETE FROM cargos_intercambio WHERE usuario_id = ?`, [u.id]);
+            db.run(`DELETE FROM notificaciones WHERE usuario_id = ?`, [u.id]);
+            db.run(`DELETE FROM usuarios WHERE id = ?`, [u.id]);
+            console.log(`🗑️ Cuenta ${u.id} eliminada definitivamente por baja de 30 días`);
+        });
+    });
+}
+
+borrarCuentasVencidas();
+setInterval(borrarCuentasVencidas, 24 * 60 * 60 * 1000);
 
 // ==================== EMAIL (RESEND) ====================
 
@@ -230,13 +244,11 @@ app.post('/api/registro', async (req, res) => {
 
             registrarUsuario(email, hashedPassword, nombre, 'TEMP_' + Date.now(), telefono, token, tokenExpira, async (err, userId) => {
                 if (err) return res.status(500).json({ error: err.message });
-
                 try {
                     await enviarEmailVerificacion(email, nombre, token);
                 } catch (emailErr) {
                     console.error('Error al enviar email de verificación:', emailErr.message);
                 }
-
                 res.status(201).json({ message: 'Cuenta creada. Revisá tu correo para verificar tu cuenta.' });
             });
         });
@@ -256,7 +268,16 @@ app.post('/api/login', loginLimiter, (req, res) => {
         }
 
         const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '24h' });
-        res.json({ token, usuario: { id: user.id, nombre: user.nombre, email: user.email, es_admin: user.es_admin === 1 } });
+        res.json({
+            token,
+            usuario: {
+                id: user.id,
+                nombre: user.nombre,
+                email: user.email,
+                es_admin: user.es_admin === 1,
+                acepto_tyc: user.acepto_tyc === 1
+            }
+        });
     });
 });
 
@@ -304,10 +325,19 @@ app.post('/api/reenviar-verificacion', (req, res) => {
 });
 
 app.get('/api/usuario', authMiddleware, (req, res) => {
-    db.get('SELECT id, email, nombre, dni, telefono, es_admin FROM usuarios WHERE id = ?', [req.userId], (err, user) => {
+    db.get('SELECT id, email, nombre, dni, telefono, es_admin, acepto_tyc FROM usuarios WHERE id = ?', [req.userId], (err, user) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
         res.json(user);
+    });
+});
+
+// ==================== TÉRMINOS Y CONDICIONES ====================
+
+app.post('/api/aceptar-tyc', authMiddleware, (req, res) => {
+    db.run('UPDATE usuarios SET acepto_tyc = 1 WHERE id = ?', [req.userId], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'Términos aceptados' });
     });
 });
 
@@ -373,6 +403,79 @@ app.post('/api/notificaciones/leer-todas', authMiddleware, (req, res) => {
     marcarTodasNotificacionesLeidas(req.userId, (err) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ message: 'OK' });
+    });
+});
+
+// ==================== BAJA DE USUARIO ====================
+
+app.post('/api/baja-cuenta', authMiddleware, async (req, res) => {
+    const { password } = req.body;
+    if (!password) return res.status(400).json({ error: 'Confirmá tu contraseña para continuar' });
+
+    db.get('SELECT * FROM usuarios WHERE id = ?', [req.userId], async (err, user) => {
+        if (err || !user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+        const validPassword = await bcrypt.compare(password, user.password);
+        if (!validPassword) return res.status(401).json({ error: 'Contraseña incorrecta' });
+
+        const fechaBaja = new Date().toISOString();
+        db.run('UPDATE usuarios SET activo = 0, fecha_baja = ? WHERE id = ?', [fechaBaja, req.userId], function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            // Desactivar todos sus cargos
+            db.run('UPDATE cargos_intercambio SET activo = 0 WHERE usuario_id = ?', [req.userId]);
+            res.json({ message: 'Cuenta dada de baja correctamente' });
+        });
+    });
+});
+
+// ==================== CONTACTO ====================
+
+app.post('/api/contacto', authMiddleware, async (req, res) => {
+    const { asunto, mensaje } = req.body;
+    if (!asunto || !mensaje) return res.status(400).json({ error: 'Asunto y mensaje son obligatorios' });
+    if (mensaje.length > 500) return res.status(400).json({ error: 'El mensaje no puede superar los 500 caracteres' });
+
+    db.get('SELECT nombre, email FROM usuarios WHERE id = ?', [req.userId], async (err, user) => {
+        if (err || !user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+        const fecha = new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' });
+
+        try {
+            // Email al admin
+            await enviarEmail('permutappcaba@gmail.com', `PermutApp — Contacto: ${asunto}`, `
+                <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 30px;">
+                    <h2 style="color: #667eea;">📚 PermutApp — Nuevo mensaje</h2>
+                    <p><strong>De:</strong> ${user.nombre} (${user.email})</p>
+                    <p><strong>Asunto:</strong> ${asunto}</p>
+                    <p><strong>Fecha:</strong> ${fecha}</p>
+                    <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+                    <p style="white-space: pre-wrap; color: #333;">${mensaje}</p>
+                    <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+                    <p style="color: #999; font-size: 12px;">Respondé este email directamente — llegará a ${user.email}</p>
+                </div>
+            `);
+
+            // Confirmación al usuario
+            await enviarEmail(user.email, 'Recibimos tu mensaje — PermutApp', `
+                <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 30px;">
+                    <h2 style="color: #667eea;">📚 PermutApp</h2>
+                    <p>Hola <strong>${user.nombre}</strong>,</p>
+                    <p>Recibimos tu mensaje y te responderemos a la brevedad en este mismo correo.</p>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                        <p><strong>Asunto:</strong> ${asunto}</p>
+                        <p style="margin-top: 8px; white-space: pre-wrap; color: #555;">${mensaje}</p>
+                    </div>
+                    <p style="color: #666; font-size: 14px;">Si no enviaste este mensaje, ignorá este correo.</p>
+                    <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+                    <p style="color: #999; font-size: 12px;">PermutApp — Intercambio de Cargos Docentes CABA</p>
+                </div>
+            `);
+
+            res.json({ message: 'Mensaje enviado. Te llegará una confirmación a tu correo.' });
+        } catch (emailErr) {
+            console.error('Error al enviar email de contacto:', emailErr.message);
+            res.status(500).json({ error: 'No se pudo enviar el mensaje. Intentá más tarde.' });
+        }
     });
 });
 
@@ -531,7 +634,6 @@ app.post('/api/escuelas', authMiddleware, (req, res) => {
                     escuela: existente
                 });
             }
-
             crearEscuelaDocente(nombre, area_id, tipo_id, cue, direccion, barrio, distrito_escolar, numero_escuela, req.userId, (err, escuelaId) => {
                 if (err) return res.status(500).json({ error: err.message });
                 res.status(201).json({ message: 'Escuela enviada para revisión', id: escuelaId });
@@ -639,12 +741,10 @@ app.get('/api/admin/cargos-propuestos', adminMiddleware, (req, res) => {
 app.post('/api/admin/cargos-propuestos/:id/aprobar', adminMiddleware, (req, res) => {
     db.get('SELECT * FROM cargos_propuestos WHERE id = ?', [req.params.id], (err, cargo) => {
         if (err || !cargo) return res.status(404).json({ error: 'Cargo no encontrado' });
-
         db.get(`SELECT id FROM cargos_propuestos WHERE nombre = ? AND estado = 'aprobado'`,
             [cargo.nombre], (err, existente) => {
                 if (err) return res.status(500).json({ error: err.message });
                 if (existente) return res.status(409).json({ error: `Ya existe un cargo aprobado con el nombre "${cargo.nombre}"` });
-
                 resolverCargoPropuesto(req.params.id, 'aprobado', null, (err, changes) => {
                     if (err) return res.status(500).json({ error: err.message });
                     if (changes === 0) return res.status(404).json({ error: 'Cargo no encontrado' });
