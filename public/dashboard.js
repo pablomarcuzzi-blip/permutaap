@@ -95,10 +95,6 @@ async function cargarUsuario() {
                 document.getElementById('adminLink').style.display = 'inline';
                 cargarBadgeAdmin();
             }
-            // Mostrar TyC si no fue aceptado aún
-            if (!usuarioActual.acepto_tyc) {
-                document.getElementById('modalTyC').style.display = 'flex';
-            }
         } else { logout(); }
     } catch (error) { logout(); }
 }
@@ -1167,28 +1163,6 @@ function logout() {
 // ==========================================
 // TÉRMINOS Y CONDICIONES
 // ==========================================
-
-async function aceptarTyC() {
-    const check = document.getElementById('checkTyC');
-    if (!check.checked) {
-        mostrarModal('advertencia', 'Tenés que leer y aceptar los Términos y Condiciones para continuar.');
-        return;
-    }
-    try {
-        const res = await fetch('/api/aceptar-tyc', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
-        if (res.ok) {
-            document.getElementById('modalTyC').style.display = 'none';
-            if (usuarioActual) usuarioActual.acepto_tyc = 1;
-        } else {
-            mostrarModal('error', 'No se pudo registrar la aceptación. Intentá de nuevo.');
-        }
-    } catch (e) {
-        mostrarModal('error', 'Error de conexión.');
-    }
-}
 
 // ==========================================
 // CONTACTO

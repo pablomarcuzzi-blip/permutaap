@@ -244,6 +244,8 @@ app.post('/api/registro', async (req, res) => {
 
             registrarUsuario(email, hashedPassword, nombre, 'TEMP_' + Date.now(), telefono, token, tokenExpira, async (err, userId) => {
                 if (err) return res.status(500).json({ error: err.message });
+                // Guardar aceptación de TyC
+                db.run('UPDATE usuarios SET acepto_tyc = 1 WHERE id = ?', [userId]);
                 try {
                     await enviarEmailVerificacion(email, nombre, token);
                 } catch (emailErr) {
