@@ -80,6 +80,13 @@
             margin-top: 5px;
         }
 
+        .field-error {
+            font-size: 12px;
+            color: #c33;
+            margin-top: 5px;
+            display: none;
+        }
+
         .input-password-wrapper {
             position: relative;
         }
@@ -201,11 +208,13 @@
                 <label for="email">Correo institucional *</label>
                 <input type="email" id="email" required placeholder="tu@bue.edu.ar">
                 <div class="field-hint">Solo se acepta correo @bue.edu.ar</div>
+                <div class="field-error" id="errorEmail"></div>
             </div>
 
             <div class="form-group">
                 <label for="confirmarEmail">Confirmar correo *</label>
                 <input type="email" id="confirmarEmail" required placeholder="Repetí tu correo" autocomplete="off">
+                <div class="field-error" id="errorConfirmarEmail"></div>
             </div>
 
             <div class="form-group">
@@ -222,6 +231,7 @@
                     <input type="password" id="repetirPassword" required placeholder="Repetí tu contraseña" minlength="6">
                     <button type="button" class="toggle-password" onclick="togglePassword('repetirPassword', this)" tabindex="-1">👁️</button>
                 </div>
+                <div class="field-error" id="errorPassword"></div>
             </div>
 
             <div class="form-group tyc-group">
@@ -257,26 +267,39 @@
             errorDiv.style.display = 'none';
             successDiv.style.display = 'none';
 
+            // Limpiar errores de campo
+            ['errorEmail', 'errorConfirmarEmail', 'errorPassword'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+            ['email', 'confirmarEmail', 'password', 'repetirPassword'].forEach(id => {
+                document.getElementById(id).classList.remove('input-error');
+            });
+
+            function mostrarErrorCampo(campoId, errorId, mensaje) {
+                const campo = document.getElementById(campoId);
+                const error = document.getElementById(errorId);
+                campo.classList.add('input-error');
+                if (error) { error.textContent = mensaje; error.style.display = 'block'; }
+                campo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                campo.focus();
+            }
+
             // Validar dominio @bue.edu.ar
             if (!email.endsWith('@bue.edu.ar')) {
-                errorDiv.textContent = 'Solo se acepta el correo institucional (@bue.edu.ar)';
-                errorDiv.style.display = 'block';
-                document.getElementById('email').classList.add('input-error');
+                mostrarErrorCampo('email', 'errorEmail', 'Solo se acepta el correo institucional (@bue.edu.ar)');
                 return;
             }
-            document.getElementById('email').classList.remove('input-error');
 
             // Validar que los emails coincidan
             if (email !== confirmarEmail) {
-                errorDiv.textContent = 'Los correos electrónicos no coinciden';
-                errorDiv.style.display = 'block';
+                mostrarErrorCampo('confirmarEmail', 'errorConfirmarEmail', 'Los correos electrónicos no coinciden');
                 return;
             }
             
             // Validar que las contraseñas coincidan
             if (password !== repetirPassword) {
-                errorDiv.textContent = 'Las contraseñas no coinciden';
-                errorDiv.style.display = 'block';
+                mostrarErrorCampo('repetirPassword', 'errorPassword', 'Las contraseñas no coinciden');
                 return;
             }
 
@@ -284,6 +307,7 @@
             if (!document.getElementById('checkTyC').checked) {
                 errorDiv.textContent = 'Tenés que aceptar los Términos y Condiciones para registrarte';
                 errorDiv.style.display = 'block';
+                document.getElementById('checkTyC').scrollIntoView({ behavior: 'smooth', block: 'center' });
                 return;
             }
 
