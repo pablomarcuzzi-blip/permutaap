@@ -145,12 +145,24 @@
         .register-link a:hover {
             text-decoration: underline;
         }
+
+        .brand-watermark {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            opacity: 0.25;
+            width: 110px;
+            pointer-events: none;
+            z-index: 10;
+        }
     </style>
 </head>
 <body>
+    <img src="/images/logo_pm.png" class="brand-watermark" alt="Pablo Marcuzzi">
     <div class="login-container">
         <div class="logo">
-            <h1>📚 PermutApp</h1>
+            <img src="/images/logo_permutapp.png" alt="PermutApp" style="height:70px;margin-bottom:8px;">
+            <h1 style="font-size:2rem;">PermutApp</h1>
             <p>Intercambio de Cargos Docentes</p>
         </div>
 
