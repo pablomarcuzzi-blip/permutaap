@@ -182,6 +182,14 @@
         .tyc-label a { color: #667eea; font-weight: 600; text-decoration: none; }
         .tyc-label a:hover { text-decoration: underline; }
     </style>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#667eea">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/service-worker.js');
+      }
+    </script>
 </head>
 <body>
     <div class="register-container">
