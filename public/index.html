@@ -3,6 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" href="/icons/icon-192.png">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#667eea">
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/service-worker.js');
+      }
+    </script>
     <title>PermutApp - Intercambio de Cargos Docentes</title>
     <style>
         * {
@@ -202,7 +212,8 @@
 <body>
     <!-- Hero Section -->
     <section class="hero">
-        <h1>🔄 PermutApp</h1>
+        <img src="/images/logo_permutapp.png" alt="PermutApp" style="height:90px;margin-bottom:15px;">
+        <h1>PermutApp</h1>
         <p>La plataforma exclusiva para docentes de Buenos Aires que quieren intercambiar cargos escolares de forma simple, rápida y segura.</p>
         <div class="buttons">
             <a href="registro.html" class="btn btn-primary">Registrarse</a>
@@ -288,7 +299,8 @@
 
     <!-- Footer -->
     <footer class="footer">
-        <p>© 2024 PermutApp - Plataforma de Intercambio de Cargos Docentes de Buenos Aires</p>
+        <p>© 2026 PermutApp - Plataforma de Intercambio de Cargos Docentes de Buenos Aires</p>
+        <img src="/images/logo_pm.png" alt="Pablo Marcuzzi" style="width:80px;opacity:0.3;margin-top:15px;">
     </footer>
 </body>
 </html>
