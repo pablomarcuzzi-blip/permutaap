@@ -894,6 +894,24 @@ app.delete('/api/admin/usuarios/:id', adminMiddleware, (req, res) => {
     });
 });
 
+// ==================== ADMIN — CARGOS POR USUARIO ====================
+
+app.get('/api/admin/usuarios/:id/cargos', adminMiddleware, (req, res) => {
+    db.all(`
+        SELECT ci.id, ci.materia, ci.año, ci.nivel, ci.area_modalidad,
+               ci.turno, ci.horario, ci.activo, ci.fecha_registro,
+               e.nombre AS escuela_nombre, e.direccion AS escuela_direccion,
+               e.barrio AS escuela_barrio
+        FROM cargos_intercambio ci
+        LEFT JOIN escuelas e ON ci.escuela_id = e.id
+        WHERE ci.usuario_id = ?
+        ORDER BY ci.fecha_registro DESC
+    `, [req.params.id], (err, cargos) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(cargos);
+    });
+});
+
 // ==================== INICIAR SERVIDOR ====================
 
 app.listen(PORT, () => {

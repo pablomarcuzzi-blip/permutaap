@@ -67,6 +67,14 @@
         .modal-confirm p { color: #666; margin-bottom: 25px; font-size: 0.95rem; }
         .modal-confirm .btn-group { display: flex; gap: 10px; justify-content: center; }
 
+        .modal-cargos .modal-content { max-width: 650px; }
+        .cargo-card { background: #f8f9ff; border: 1px solid #dde0ff; border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; }
+        .cargo-card-titulo { font-weight: 700; color: #667eea; font-size: 0.95rem; margin-bottom: 6px; }
+        .cargo-card-detalle { font-size: 0.85rem; color: #555; line-height: 1.8; }
+        .cargo-card-detalle span { display: inline-block; margin-right: 16px; }
+        .badge-cargo-activo { background: #d4edda; color: #155724; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; }
+        .badge-cargo-inactivo { background: #f8d7da; color: #721c24; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; }
+
         @media (max-width: 700px) {
             .tabla-abm { font-size: 0.8rem; }
             .tabla-abm th, .tabla-abm td { padding: 8px 6px; }
@@ -161,6 +169,17 @@
         <h3 style="color:#dc3545; margin-bottom:10px;">Error</h3>
         <p id="mensajeError"></p>
         <button class="btn btn-danger" onclick="cerrarFeedback('modalError')">Aceptar</button>
+    </div>
+</div>
+
+<!-- Modal Cargos del Usuario -->
+<div id="modalCargos" class="modal modal-cargos">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>👁️ Cargos de <span id="cargosNombreUsuario"></span></h3>
+            <button class="close-btn" onclick="cerrarModalCargos()">&times;</button>
+        </div>
+        <div id="cargosContainer"><div class="empty-state">Cargando...</div></div>
     </div>
 </div>
 
@@ -264,6 +283,7 @@ function renderTabla(lista) {
                     <td><span class="badge-estado ${u.email_verificado ? 'badge-verificado' : 'badge-no-verificado'}">${u.email_verificado ? '✓ Verificado' : '⚠ Pendiente'}</span></td>
                     <td style="font-size:0.82rem;">${new Date(u.fecha_registro).toLocaleDateString('es-AR')}</td>
                     <td><div class="acciones">
+                        <button class="btn btn-info" onclick="verCargos(${u.id}, '${u.nombre.replace(/'/g, "\\'")}')">👁️</button>
                         <button class="btn btn-warning" onclick="abrirEditar(${u.id})">✏️</button>
                         <button class="btn btn-danger" onclick="pedirEliminar(${u.id}, '${u.nombre.replace(/'/g, "\\'")}')">🗑️</button>
                     </div></td>
@@ -313,6 +333,54 @@ async function guardarEditUser() {
         const err = await res.json();
         msgDiv.innerHTML = `<div class="alert alert-warning">❌ ${err.error}</div>`;
     }
+}
+
+// ==================== VER CARGOS ====================
+
+async function verCargos(id, nombre) {
+    document.getElementById('cargosNombreUsuario').textContent = nombre;
+    document.getElementById('cargosContainer').innerHTML = '<div class="empty-state">Cargando...</div>';
+    document.getElementById('modalCargos').classList.add('active');
+
+    try {
+        const res = await fetch(`/api/admin/usuarios/${id}/cargos`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const cargos = await res.json();
+        const container = document.getElementById('cargosContainer');
+
+        if (!cargos.length) {
+            container.innerHTML = '<div class="empty-state">Este usuario no tiene cargos registrados.</div>';
+            return;
+        }
+
+        container.innerHTML = cargos.map(c => `
+            <div class="cargo-card">
+                <div class="cargo-card-titulo">
+                    📚 ${c.materia}
+                    <span class="${c.activo ? 'badge-cargo-activo' : 'badge-cargo-inactivo'}" style="margin-left:8px;">
+                        ${c.activo ? 'Activo' : 'Inactivo'}
+                    </span>
+                </div>
+                <div class="cargo-card-detalle">
+                    <span>🏫 ${c.escuela_nombre || 'Sin escuela'}</span>
+                    ${c.escuela_barrio ? `<span>📍 ${c.escuela_barrio}</span>` : ''}
+                    <br>
+                    <span>📅 ${c.año} año</span>
+                    <span>🕐 Turno ${c.turno}</span>
+                    ${c.horario ? `<span>⏰ ${c.horario}</span>` : ''}
+                    <br>
+                    <span>📋 ${c.nivel} — ${c.area_modalidad}</span>
+                </div>
+            </div>
+        `).join('');
+    } catch (e) {
+        document.getElementById('cargosContainer').innerHTML = '<div class="empty-state">Error al cargar los cargos.</div>';
+    }
+}
+
+function cerrarModalCargos() {
+    document.getElementById('modalCargos').classList.remove('active');
 }
 
 // ==================== ELIMINAR ====================
